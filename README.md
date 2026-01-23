@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# Gidi Inventory Management Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React web dashboard for managing inventory of products built from parts. The system helps visualize which products can be completed given current inventory and optimizes part allocation.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/gidi-inventory.git
+cd gidi-inventory
 
-## React Compiler
+# Install dependencies
+npm install
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app will open at `http://localhost:5173`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Before you begin, make sure you have installed:
+- [Node.js](https://nodejs.org/) (version 18 or higher)
+- [Git](https://git-scm.com/)
+- A code editor like [VS Code](https://code.visualstudio.com/)
+
+## Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with hot reload |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | Run ESLint to check for code issues |
+
+## Tech Stack
+
+- **React 18** + **Vite** + **TypeScript**
+- **Tailwind CSS** - Styling
+- **Zustand** - State management
+- **@dnd-kit** - Drag-and-drop for priority reordering
+- **papaparse** - CSV parsing (Hebrew UTF-8 support)
+- **idb-keyval** - IndexedDB persistence
+
+## Features
+
+- CSV import with Hebrew support
+- Product priority reordering (drag-and-drop)
+- Real-time allocation calculation
+- Bottleneck part identification
+- Parts inventory view with search/sort
+- Data persistence (IndexedDB)
+
+## Project Structure
+
 ```
+src/
+├── types/index.ts          # TypeScript interfaces
+├── utils/
+│   ├── allocation.ts       # Allocation algorithm
+│   ├── csvParser.ts        # CSV parsing
+│   └── storage.ts          # IndexedDB persistence
+├── stores/
+│   └── inventoryStore.ts   # Zustand store
+├── components/
+│   ├── common/             # Reusable UI components
+│   ├── dashboard/          # Main dashboard components
+│   └── inventory/          # Inventory view components
+└── App.tsx                 # Main app
+```
+
+## For New Contributors
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed first-time setup instructions (in Hebrew).
