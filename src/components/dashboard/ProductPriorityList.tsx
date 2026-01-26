@@ -25,7 +25,7 @@ export function ProductPriorityList() {
     selectProduct,
     updateProductPriorities,
     targets,
-    useRatioAllocation,
+    allocationMethod,
   } = useInventoryStore();
 
   const sensors = useSensors(
@@ -82,7 +82,7 @@ export function ProductPriorityList() {
   }
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col overflow-hidden">
       <CardHeader className="flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">סדר עדיפות מוצרים</h2>
@@ -90,9 +90,11 @@ export function ProductPriorityList() {
         </div>
         <div className="flex items-center gap-2 mt-1">
           <p className="text-xs text-gray-500">
-            {useRatioAllocation ? 'הקצאה אוטומטית לפי יעדים' : 'גרור כדי לשנות עדיפות'}
+            {allocationMethod === 'priority' && 'גרור כדי לשנות עדיפות'}
+            {allocationMethod === 'ratio' && 'הקצאה לפי עדיפות למלאי מינימום'}
+            {allocationMethod === 'demandRatio' && 'הקצאה לפי עדיפות לדרישה כוללת'}
           </p>
-          {useRatioAllocation && (
+          {allocationMethod !== 'priority' && (
             <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
               אוטומטי
             </span>

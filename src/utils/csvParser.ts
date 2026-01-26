@@ -12,14 +12,29 @@ export function parseCsvFile(file: File): Promise<ParsedInventory> {
       skipEmptyLines: true,
       complete: (results) => {
         try {
+          // Validate that required columns exist
+          const headers = Object.keys(results.data[0] || {});
+          const validation = validateCsvColumns(headers);
+          
+          if (!validation.valid) {
+            const missingCols = validation.missing.join(', ');
+            throw new Error(`עמודות חסרות: ${missingCols}\n\nעמודות נדרשות: שם מוצר, מק״ט חלק, תיאור, כמות למוצר אחד, מלאי קיים מהחלק`);
+          }
+
           const parsed = normalizeData(results.data);
+          
+          // Check if any data was actually parsed
+          if (parsed.products.length === 0) {
+            throw new Error('הקובץ אינו מכיל נתונים תקינים. אנא בדוק שהעמודות בקובץ תואמות את הפורמט הנדרש.');
+          }
+          
           resolve(parsed);
         } catch (error) {
           reject(error);
         }
       },
       error: (error) => {
-        reject(error);
+        reject(new Error(`שגיאה בקריאת הקובץ: ${error.message}`));
       },
     });
   });

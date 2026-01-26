@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Part, Product, AllocationResult, ProductTarget } from '../types';
 import { parseCsvFile } from '../utils/csvParser';
-import { allocateInventory, allocateByRatio } from '../utils/allocation';
+import { allocateInventory, allocateByRatio, allocateByDemandRatio } from '../utils/allocation';
 import { saveInventory, loadInventory, saveProductPriorities, saveTargets, loadTargets } from '../utils/storage';
 
 // Default targets from next-session.md
@@ -23,6 +23,23 @@ const DEFAULT_TARGETS: Record<string, ProductTarget> = {
   '4593/2 סככת שיפוט 2 מ׳ 4 מקומות': { productName: '4593/2 סככת שיפוט 2 מ׳ 4 מקומות', minStock: 3, expectedInstalls: 2 },
 };
 
+// Helper function to calculate allocations based on selected method
+function calculateAllocations(
+  products: Product[],
+  parts: Record<string, Part>,
+  targets: Record<string, ProductTarget>,
+  method: 'priority' | 'ratio' | 'demandRatio'
+): AllocationResult[] {
+  switch (method) {
+    case 'priority':
+      return allocateInventory(products, parts);
+    case 'ratio':
+      return allocateByRatio(products, parts, targets);
+    case 'demandRatio':
+      return allocateByDemandRatio(products, parts, targets);
+  }
+}
+
 interface InventoryState {
   // Data
   parts: Record<string, Part>;
@@ -31,7 +48,7 @@ interface InventoryState {
   lastImportDate: string | null;
   selectedProductId: string | null;
   targets: Record<string, ProductTarget>;  // productName -> ProductTarget
-  useRatioAllocation: boolean;             // Toggle between manual priority and ratio-based allocation
+  allocationMethod: 'priority' | 'ratio' | 'demandRatio';  // Allocation strategy to use
 
   // UI State
   isLoading: boolean;
@@ -45,7 +62,7 @@ interface InventoryState {
   recalculateAllocations: () => void;
   clearError: () => void;
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => void;
-  setUseRatioAllocation: (useRatio: boolean) => void;
+  setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => void;
   resetTargetsToDefaults: () => void;
 }
 
@@ -57,7 +74,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   lastImportDate: null,
   selectedProductId: null,
   targets: {},
-  useRatioAllocation: true,  // Default to ratio-based allocation
+  allocationMethod: 'demandRatio',  // Default to demand-ratio allocation
   isLoading: false,
   error: null,
 
@@ -87,8 +104,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       // Sort by priority
       productsWithPriorities.sort((a, b) => a.priority - b.priority);
 
-      // Calculate allocations
-      const allocations = allocateInventory(productsWithPriorities, parts);
+      // Calculate allocations using selected method
+      const { allocationMethod, targets: currentTargets } = get();
+      const allocations = calculateAllocations(productsWithPriorities, parts, currentTargets, allocationMethod);
 
       // Save to storage
       await saveInventory({
@@ -126,12 +144,10 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       if (stored) {
         // Use stored targets, falling back to defaults for missing products
         const targets = { ...DEFAULT_TARGETS, ...storedTargets };
-        const { useRatioAllocation } = get();
+        const { allocationMethod } = get();
 
-        // Use ratio-based allocation if enabled and targets exist
-        const allocations = useRatioAllocation && Object.keys(targets).length > 0
-          ? allocateByRatio(stored.products, stored.parts, targets)
-          : allocateInventory(stored.products, stored.parts);
+        // Calculate allocations using selected method
+        const allocations = calculateAllocations(stored.products, stored.parts, targets, allocationMethod);
 
         set({
           parts: stored.parts,
@@ -159,8 +175,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     }));
 
     // Recalculate allocations with new priorities
-    const { parts } = get();
-    const allocations = allocateInventory(products, parts);
+    const { parts, targets, allocationMethod } = get();
+    const allocations = calculateAllocations(products, parts, targets, allocationMethod);
 
     set({ products, allocations });
 
@@ -175,13 +191,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
   // Manually recalculate allocations
   recalculateAllocations: () => {
-    const { products, parts, targets, useRatioAllocation } = get();
-
-    // Use ratio-based allocation if enabled and targets exist
-    const allocations = useRatioAllocation && Object.keys(targets).length > 0
-      ? allocateByRatio(products, parts, targets)
-      : allocateInventory(products, parts);
-
+    const { products, parts, targets, allocationMethod } = get();
+    const allocations = calculateAllocations(products, parts, targets, allocationMethod);
     set({ allocations });
   },
 
@@ -192,7 +203,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
 
   // Set target for a specific product
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => {
-    const { targets, products, parts, useRatioAllocation } = get();
+    const { targets, products, parts, allocationMethod } = get();
 
     const newTargets = {
       ...targets,
@@ -204,9 +215,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     };
 
     // Recalculate allocations with new targets
-    const allocations = useRatioAllocation && Object.keys(newTargets).length > 0
-      ? allocateByRatio(products, parts, newTargets)
-      : allocateInventory(products, parts);
+    const allocations = calculateAllocations(products, parts, newTargets, allocationMethod);
 
     set({ targets: newTargets, allocations });
 
@@ -214,27 +223,17 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     saveTargets(newTargets).catch(console.error);
   },
 
-  // Toggle between manual priority and ratio-based allocation
-  setUseRatioAllocation: (useRatio: boolean) => {
+  // Change allocation method
+  setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => {
     const { products, parts, targets } = get();
-
-    // Recalculate allocations with new mode
-    const allocations = useRatio && Object.keys(targets).length > 0
-      ? allocateByRatio(products, parts, targets)
-      : allocateInventory(products, parts);
-
-    set({ useRatioAllocation: useRatio, allocations });
+    const allocations = calculateAllocations(products, parts, targets, method);
+    set({ allocationMethod: method, allocations });
   },
 
   // Reset all targets to default values
   resetTargetsToDefaults: () => {
-    const { products, parts, useRatioAllocation } = get();
-
-    // Recalculate allocations with default targets
-    const allocations = useRatioAllocation
-      ? allocateByRatio(products, parts, DEFAULT_TARGETS)
-      : allocateInventory(products, parts);
-
+    const { products, parts, allocationMethod } = get();
+    const allocations = calculateAllocations(products, parts, DEFAULT_TARGETS, allocationMethod);
     set({ targets: DEFAULT_TARGETS, allocations });
 
     // Save to storage

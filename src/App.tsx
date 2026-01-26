@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useInventoryStore } from './stores/inventoryStore';
 import { Header } from './components/dashboard/Header';
 import { SummaryCards } from './components/dashboard/SummaryCards';
+import { AllocationMethodControl } from './components/dashboard/AllocationMethodControl';
 import { ProductPriorityList } from './components/dashboard/ProductPriorityList';
 import { AllocationDetails } from './components/dashboard/AllocationDetails';
 import { PartsTable } from './components/inventory/PartsTable';
@@ -139,7 +140,8 @@ function App() {
           // Dashboard view
           <>
             <SummaryCards />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 320px)' }}>
+            <AllocationMethodControl />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: '600px' }}>
               <ProductPriorityList />
               <AllocationDetails />
             </div>

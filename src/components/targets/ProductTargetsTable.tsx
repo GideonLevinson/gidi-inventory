@@ -3,7 +3,7 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import { Card, CardHeader, CardContent } from '../common/Card';
 
 export function ProductTargetsTable() {
-  const { products, targets, allocations, setProductTarget, useRatioAllocation, setUseRatioAllocation, resetTargetsToDefaults } = useInventoryStore();
+  const { products, targets, allocations, setProductTarget, resetTargetsToDefaults } = useInventoryStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCell, setEditingCell] = useState<{ productName: string; field: 'minStock' | 'expectedInstalls' } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -89,29 +89,6 @@ export function ProductTargetsTable() {
                 איפוס לברירת מחדל
               </button>
             </div>
-          </div>
-
-          {/* Allocation mode toggle */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-600">מצב הקצאה:</span>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={useRatioAllocation}
-                onChange={() => setUseRatioAllocation(true)}
-                className="text-blue-600"
-              />
-              <span className="text-sm">אוטומטי לפי יעדים</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={!useRatioAllocation}
-                onChange={() => setUseRatioAllocation(false)}
-                className="text-blue-600"
-              />
-              <span className="text-sm">ידני לפי עדיפות</span>
-            </label>
           </div>
         </div>
       </CardHeader>
@@ -237,12 +214,17 @@ export function ProductTargetsTable() {
 
         {/* Instructions */}
         <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-          <p className="font-medium mb-1">הוראות:</p>
+          <p className="font-medium mb-2">שיטות הקצאה:</p>
+          <ul className="list-disc list-inside space-y-1 mb-3">
+            <li><strong>ידני לפי עדיפות</strong> - התא מעדיף לפי סדר העדיפות שקבעת</li>
+            <li><strong>עדיפות למלאי מינימום</strong> - התא מעדיף מוצרים רחוקים מיעדם (מלאי מינימום בלבד)</li>
+            <li><strong>עדיפות לדרישה כוללת</strong> - התא מעדיף לפי יחס הדרישה בין מוצרים (minStock + expectedInstalls)</li>
+          </ul>
+          <p className="font-medium mb-1">הוראות עדכון יעדים:</p>
           <ul className="list-disc list-inside space-y-1">
             <li>לחץ על תא כדי לערוך את הערך</li>
             <li><strong>מלאי מינימום רצוי</strong> - כמות מוצרים מוגמרים שרצוי להחזיק במלאי</li>
             <li><strong>צפי התקנות</strong> - הזמנות/התקנות צפויות שיצרכו מוצרים</li>
-            <li>האלגוריתם מנסה לאזן את ההתקדמות בין כל המוצרים לפי יחס היעדים שלהם</li>
           </ul>
         </div>
       </CardContent>
