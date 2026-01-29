@@ -12,12 +12,12 @@ import { PurchaseOrderView } from './components/orders/PurchaseOrderView';
 type Tab = 'dashboard' | 'inventory' | 'targets' | 'orders';
 
 function App() {
-  const { loadFromStorage, error, clearError, products } = useInventoryStore();
+  const { loadInventory, error, clearError, products } = useInventoryStore();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
 
   useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
+    loadInventory();
+  }, [loadInventory]);
 
   return (
     <div className="min-h-screen bg-gray-50">

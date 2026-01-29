@@ -1,43 +1,16 @@
 import { create } from 'zustand';
 import type { Part, Product, AllocationResult, ProductTarget } from '../types';
-import { parseCsvFile } from '../utils/csvParser';
-import { allocateInventory, allocateByRatio, allocateByDemandRatio } from '../utils/allocation';
-import { saveInventory, loadInventory, saveProductPriorities, saveTargets, loadTargets } from '../utils/storage';
 
-// Default targets from next-session.md
-const DEFAULT_TARGETS: Record<string, ProductTarget> = {
-  '4580/2-TI זוג שערי 7/2 קבועים': { productName: '4580/2-TI זוג שערי 7/2 קבועים', minStock: 4, expectedInstalls: 2 },
-  '4580/RIL-200  קיט זוג RIL': { productName: '4580/RIL-200  קיט זוג RIL', minStock: 0, expectedInstalls: 0 },
-  '4580/4-ATI זוג שערי 7/2 ניידים': { productName: '4580/4-ATI זוג שערי 7/2 ניידים', minStock: 4, expectedInstalls: 1 },
-  'זוג שערי 5/2 קבוע 4582-TI': { productName: 'זוג שערי 5/2 קבוע 4582-TI', minStock: 15, expectedInstalls: 3 },
-  'קיט זוג 4582/RIL': { productName: 'קיט זוג 4582/RIL', minStock: 0, expectedInstalls: 0 },
-  '4582/4-ATI זוג שערי 5/2 ניידים': { productName: '4582/4-ATI זוג שערי 5/2 ניידים', minStock: 15, expectedInstalls: 7 },
-  '4580 3x2premium  זוג שערי 3/2 קבועים': { productName: '4580 3x2premium  זוג שערי 3/2 קבועים', minStock: 4, expectedInstalls: 0 },
-  '45803x2/4-ATI  זוג שערי 3/2 ניידים': { productName: '45803x2/4-ATI  זוג שערי 3/2 ניידים', minStock: 3, expectedInstalls: 0 },
-  '4642/B זוג שערי פוטסל קבועים עם אוזניים': { productName: '4642/B זוג שערי פוטסל קבועים עם אוזניים', minStock: 10, expectedInstalls: 1 },
-  '4642 זוג שערי פוטסל ניידים': { productName: '4642 זוג שערי פוטסל ניידים', minStock: 10, expectedInstalls: 0 },
-  '4642/B+RIL  זוג שערי פוטסל קבועים עם RIL': { productName: '4642/B+RIL  זוג שערי פוטסל קבועים עם RIL', minStock: 5, expectedInstalls: 1 },
-  'שער מטרה DB120X90': { productName: 'שער מטרה DB120X90', minStock: 20, expectedInstalls: 4 },
-  'שער מטרה DB180X120': { productName: 'שער מטרה DB180X120', minStock: 8, expectedInstalls: 0 },
-  '4593/9 סככת שחקנים 9 מ׳ 17 מקומות': { productName: '4593/9 סככת שחקנים 9 מ׳ 17 מקומות', minStock: 6, expectedInstalls: 4 },
-  '4593/2 סככת שיפוט 2 מ׳ 4 מקומות': { productName: '4593/2 סככת שיפוט 2 מ׳ 4 מקומות', minStock: 3, expectedInstalls: 2 },
-};
+const API_BASE_URL = 'http://localhost:3001/api';
 
 // Helper function to calculate allocations based on selected method
 function calculateAllocations(
   products: Product[],
   parts: Record<string, Part>,
-  targets: Record<string, ProductTarget>,
-  method: 'priority' | 'ratio' | 'demandRatio'
+  allocations: AllocationResult[]
 ): AllocationResult[] {
-  switch (method) {
-    case 'priority':
-      return allocateInventory(products, parts);
-    case 'ratio':
-      return allocateByRatio(products, parts, targets);
-    case 'demandRatio':
-      return allocateByDemandRatio(products, parts, targets);
-  }
+  // Allocations are calculated server-side now
+  return allocations;
 }
 
 interface InventoryState {
@@ -47,7 +20,6 @@ interface InventoryState {
   allocations: AllocationResult[];
   lastImportDate: string | null;
   selectedProductId: string | null;
-  targets: Record<string, ProductTarget>;  // productName -> ProductTarget
   allocationMethod: 'priority' | 'ratio' | 'demandRatio';  // Allocation strategy to use
 
   // UI State
@@ -55,15 +27,13 @@ interface InventoryState {
   error: string | null;
 
   // Actions
-  importCsv: (file: File) => Promise<void>;
-  loadFromStorage: () => Promise<void>;
+  uploadCsv: (file: File) => Promise<void>;
+  loadInventory: () => Promise<void>;
   updateProductPriorities: (products: Product[]) => void;
   selectProduct: (productId: string | null) => void;
-  recalculateAllocations: () => void;
   clearError: () => void;
-  setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => void;
-  setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => void;
-  resetTargetsToDefaults: () => void;
+  setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
+  setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
@@ -73,96 +43,74 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   allocations: [],
   lastImportDate: null,
   selectedProductId: null,
-  targets: {},
   allocationMethod: 'demandRatio',  // Default to demand-ratio allocation
   isLoading: false,
   error: null,
 
-  // Import CSV file
-  importCsv: async (file: File) => {
+  // Upload new CSV file (replaces existing data)
+  uploadCsv: async (file: File) => {
     set({ isLoading: true, error: null });
 
     try {
-      const { parts, products } = await parseCsvFile(file);
-      const lastImportDate = new Date().toISOString();
-
-      // Preserve priorities for existing products
-      const existingProducts = get().products;
-      const existingPriorities = new Map(
-        existingProducts.map((p) => [p.name, p.priority])
-      );
-
-      // Assign priorities: existing products keep their priority, new ones get appended
-      let maxPriority = Math.max(0, ...existingProducts.map((p) => p.priority));
-      const productsWithPriorities = products.map((product) => {
-        if (existingPriorities.has(product.name)) {
-          return { ...product, priority: existingPriorities.get(product.name)! };
-        }
-        return { ...product, priority: ++maxPriority };
+      const text = await file.text();
+      const response = await fetch(`${API_BASE_URL}/inventory/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv' },
+        body: text,
       });
 
-      // Sort by priority
-      productsWithPriorities.sort((a, b) => a.priority - b.priority);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload CSV');
+      }
 
-      // Calculate allocations using selected method
-      const { allocationMethod, targets: currentTargets } = get();
-      const allocations = calculateAllocations(productsWithPriorities, parts, currentTargets, allocationMethod);
-
-      // Save to storage
-      await saveInventory({
-        parts,
-        products: productsWithPriorities,
-        lastImportDate,
-      });
-
+      const data = await response.json();
       set({
-        parts,
-        products: productsWithPriorities,
-        allocations,
-        lastImportDate,
+        parts: data.parts,
+        products: data.products,
+        allocations: data.allocations,
+        lastImportDate: data.lastImportDate,
+        selectedProductId: data.selectedProductId,
         isLoading: false,
-        selectedProductId: productsWithPriorities[0]?.id || null,
       });
     } catch (error) {
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to import CSV',
+        error: error instanceof Error ? error.message : 'Failed to upload CSV',
       });
     }
   },
 
-  // Load from storage on app start
-  loadFromStorage: async () => {
-    set({ isLoading: true });
+  // Load inventory from server
+  loadInventory: async () => {
+    set({ isLoading: true, error: null });
 
     try {
-      const [stored, storedTargets] = await Promise.all([
-        loadInventory(),
-        loadTargets(),
-      ]);
+      const response = await fetch(`${API_BASE_URL}/inventory`);
+      if (!response.ok) {
+        throw new Error('Failed to load inventory');
+      }
 
-      if (stored) {
-        // Use stored targets, falling back to defaults for missing products
-        const targets = { ...DEFAULT_TARGETS, ...storedTargets };
-        const { allocationMethod } = get();
-
-        // Calculate allocations using selected method
-        const allocations = calculateAllocations(stored.products, stored.parts, targets, allocationMethod);
-
+      const data = await response.json();
+      
+      // Only update if there's actual data
+      if (data.products && data.products.length > 0) {
         set({
-          parts: stored.parts,
-          products: stored.products,
-          allocations,
-          lastImportDate: stored.lastImportDate,
-          targets,
+          parts: data.parts,
+          products: data.products,
+          allocations: data.allocations,
+          lastImportDate: data.lastImportDate,
+          selectedProductId: data.selectedProductId || data.products[0]?.id || null,
           isLoading: false,
-          selectedProductId: stored.products[0]?.id || null,
         });
       } else {
         set({ isLoading: false });
       }
     } catch (error) {
-      set({ isLoading: false });
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load inventory',
+      });
     }
   },
 
@@ -174,26 +122,32 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       priority: index,
     }));
 
-    // Recalculate allocations with new priorities
-    const { parts, targets, allocationMethod } = get();
-    const allocations = calculateAllocations(products, parts, targets, allocationMethod);
+    set({ products });
 
-    set({ products, allocations });
-
-    // Save to storage (async, non-blocking)
-    saveProductPriorities(products).catch(console.error);
+    // Send to server (async, non-blocking)
+    fetch(`${API_BASE_URL}/inventory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        parts: get().parts,
+        products,
+        allocationMethod: get().allocationMethod,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        set({
+          products: data.products,
+          allocations: data.allocations,
+          lastImportDate: data.lastImportDate,
+        });
+      })
+      .catch(console.error);
   },
 
   // Select a product to view details
   selectProduct: (productId: string | null) => {
     set({ selectedProductId: productId });
-  },
-
-  // Manually recalculate allocations
-  recalculateAllocations: () => {
-    const { products, parts, targets, allocationMethod } = get();
-    const allocations = calculateAllocations(products, parts, targets, allocationMethod);
-    set({ allocations });
   },
 
   // Clear error message
@@ -202,41 +156,51 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   // Set target for a specific product
-  setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => {
-    const { targets, products, parts, allocationMethod } = get();
+  setProductTarget: async (productName: string, minStock: number, expectedInstalls: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/product-target`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName, minStock, expectedInstalls }),
+      });
 
-    const newTargets = {
-      ...targets,
-      [productName]: {
-        productName,
-        minStock,
-        expectedInstalls,
-      },
-    };
+      if (!response.ok) {
+        throw new Error('Failed to update target');
+      }
 
-    // Recalculate allocations with new targets
-    const allocations = calculateAllocations(products, parts, newTargets, allocationMethod);
-
-    set({ targets: newTargets, allocations });
-
-    // Save to storage (async, non-blocking)
-    saveTargets(newTargets).catch(console.error);
+      // Reload inventory to get updated allocations
+      await get().loadInventory();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update target',
+      });
+    }
   },
 
   // Change allocation method
-  setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => {
-    const { products, parts, targets } = get();
-    const allocations = calculateAllocations(products, parts, targets, method);
-    set({ allocationMethod: method, allocations });
-  },
+  setAllocationMethod: async (method: 'priority' | 'ratio' | 'demandRatio') => {
+    set({ allocationMethod: method });
 
-  // Reset all targets to default values
-  resetTargetsToDefaults: () => {
-    const { products, parts, allocationMethod } = get();
-    const allocations = calculateAllocations(products, parts, DEFAULT_TARGETS, allocationMethod);
-    set({ targets: DEFAULT_TARGETS, allocations });
+    try {
+      const response = await fetch(`${API_BASE_URL}/allocation-method`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method }),
+      });
 
-    // Save to storage
-    saveTargets(DEFAULT_TARGETS).catch(console.error);
+      if (!response.ok) {
+        throw new Error('Failed to change allocation method');
+      }
+
+      const data = await response.json();
+      set({
+        allocations: data.allocations,
+        lastImportDate: data.lastImportDate,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to change allocation method',
+      });
+    }
   },
 }));
