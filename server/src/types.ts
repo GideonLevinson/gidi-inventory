@@ -19,6 +19,13 @@ export interface Product {
   priority: number;         // User-set priority (lower = higher priority)
 }
 
+// Product target for allocation
+export interface ProductTarget {
+  productName: string;
+  minStock: number;
+  expectedInstalls: number;
+}
+
 // Allocation results
 export interface AllocationResult {
   productId: string;
@@ -43,6 +50,7 @@ export interface AppState {
   parts: Record<string, Part>;      // sku -> Part
   products: Product[];              // Ordered by priority
   allocations: AllocationResult[];  // Calculated allocations
+  targets: Record<string, ProductTarget>;  // Product targets
   lastImportDate: string | null;
   selectedProductId: string | null;
 }

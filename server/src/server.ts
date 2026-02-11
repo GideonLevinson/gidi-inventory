@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import * as fs from 'fs-extra';
+import { promises as fs } from 'fs';
+import * as fsExtra from 'fs-extra';
 import Papa from 'papaparse';
 import type {
   Part,
@@ -35,7 +36,7 @@ app.use(express.json());
 app.use(express.text({ type: 'text/csv' }));
 
 // Ensure data directory exists
-await fs.ensureDir(DATA_DIR);
+await fsExtra.ensureDir(DATA_DIR);
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -61,12 +62,13 @@ function getDefaultTargets(products: Product[]): Record<string, ProductTarget> {
  */
 async function loadInventoryFromFile(): Promise<AppState> {
   try {
-    if (!(await fs.pathExists(INVENTORY_FILE))) {
+    if (!(await fsExtra.pathExists(INVENTORY_FILE))) {
       // Return empty state if no file exists yet
       return {
         parts: {},
         products: [],
         allocations: [],
+        targets: {},
         lastImportDate: null,
         selectedProductId: null,
       };
@@ -78,9 +80,10 @@ async function loadInventoryFromFile(): Promise<AppState> {
     // Load targets from a separate targets file if it exists
     let targets = getDefaultTargets(parsed.products);
     const targetsFile = path.join(DATA_DIR, 'targets.json');
-    if (await fs.pathExists(targetsFile)) {
+    if (await fsExtra.pathExists(targetsFile)) {
       try {
-        targets = await fs.readJson(targetsFile);
+        const jsonContent = await fs.readFile(targetsFile, 'utf-8');
+        targets = JSON.parse(jsonContent);
       } catch (err) {
         console.warn('Could not load targets file, using defaults');
       }
@@ -93,6 +96,7 @@ async function loadInventoryFromFile(): Promise<AppState> {
       parts: parsed.parts,
       products: parsed.products,
       allocations,
+      targets,
       lastImportDate: new Date().toISOString(),
       selectedProductId: parsed.products[0]?.id || null,
     };
@@ -139,8 +143,9 @@ async function saveInventoryToFile(state: AppState): Promise<void> {
 async function loadTargets(): Promise<Record<string, ProductTarget>> {
   try {
     const targetsFile = path.join(DATA_DIR, 'targets.json');
-    if (await fs.pathExists(targetsFile)) {
-      return await fs.readJson(targetsFile);
+    if (await fsExtra.pathExists(targetsFile)) {
+      const jsonContent = await fs.readFile(targetsFile, 'utf-8');
+      return JSON.parse(jsonContent);
     }
     return {};
   } catch (error) {
@@ -155,7 +160,8 @@ async function loadTargets(): Promise<Record<string, ProductTarget>> {
 async function saveTargets(targets: Record<string, ProductTarget>): Promise<void> {
   try {
     const targetsFile = path.join(DATA_DIR, 'targets.json');
-    await fs.writeJson(targetsFile, targets, { spaces: 2 });
+    const jsonContent = JSON.stringify(targets, null, 2);
+    await fs.writeFile(targetsFile, jsonContent, 'utf-8');
   } catch (error) {
     console.error('Error saving targets:', error);
     throw error;
@@ -238,6 +244,7 @@ app.post('/api/inventory', express.json(), async (req, res) => {
       parts: updatedParts,
       products: updatedProducts,
       allocations: recalculatedAllocations,
+      targets,
       lastImportDate: new Date().toISOString(),
       selectedProductId: currentState.selectedProductId,
     };
@@ -285,6 +292,7 @@ app.post('/api/inventory/upload', express.text({ type: 'text/csv' }), async (req
       parts: parsed.parts,
       products: parsed.products,
       allocations,
+      targets,
       lastImportDate: new Date().toISOString(),
       selectedProductId: parsed.products[0]?.id || null,
     };
@@ -367,7 +375,7 @@ app.post('/api/allocation-method', express.json(), async (req, res) => {
  */
 app.get('/api/csv', async (req, res) => {
   try {
-    if (!(await fs.pathExists(INVENTORY_FILE))) {
+    if (!(await fsExtra.pathExists(INVENTORY_FILE))) {
       return res.status(404).json({ error: 'No inventory file found' });
     }
 

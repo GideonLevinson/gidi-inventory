@@ -3,21 +3,12 @@ import type { Part, Product, AllocationResult, ProductTarget } from '../types';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
-// Helper function to calculate allocations based on selected method
-function calculateAllocations(
-  products: Product[],
-  parts: Record<string, Part>,
-  allocations: AllocationResult[]
-): AllocationResult[] {
-  // Allocations are calculated server-side now
-  return allocations;
-}
-
 interface InventoryState {
   // Data
   parts: Record<string, Part>;
   products: Product[];
   allocations: AllocationResult[];
+  targets: Record<string, ProductTarget>;
   lastImportDate: string | null;
   selectedProductId: string | null;
   allocationMethod: 'priority' | 'ratio' | 'demandRatio';  // Allocation strategy to use
@@ -34,6 +25,7 @@ interface InventoryState {
   clearError: () => void;
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
   setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
+  resetTargetsToDefaults: () => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
@@ -41,6 +33,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   parts: {},
   products: [],
   allocations: [],
+  targets: {},
   lastImportDate: null,
   selectedProductId: null,
   allocationMethod: 'demandRatio',  // Default to demand-ratio allocation
@@ -69,6 +62,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
         parts: data.parts,
         products: data.products,
         allocations: data.allocations,
+        targets: data.targets || {},
         lastImportDate: data.lastImportDate,
         selectedProductId: data.selectedProductId,
         isLoading: false,
@@ -99,6 +93,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           parts: data.parts,
           products: data.products,
           allocations: data.allocations,
+          targets: data.targets || {},
           lastImportDate: data.lastImportDate,
           selectedProductId: data.selectedProductId || data.products[0]?.id || null,
           isLoading: false,
@@ -200,6 +195,40 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to change allocation method',
+      });
+    }
+  },
+
+  // Reset all targets to defaults (0, 0)
+  resetTargetsToDefaults: async () => {
+    try {
+      const { products } = get();
+      const defaultTargets: Record<string, ProductTarget> = {};
+      
+      for (const product of products) {
+        defaultTargets[product.name] = {
+          productName: product.name,
+          minStock: 0,
+          expectedInstalls: 0,
+        };
+      }
+
+      set({ targets: defaultTargets });
+
+      // Notify server by updating each target
+      for (const productName in defaultTargets) {
+        await fetch(`${API_BASE_URL}/product-target`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productName, minStock: 0, expectedInstalls: 0 }),
+        });
+      }
+
+      // Reload inventory to get updated allocations
+      await get().loadInventory();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to reset targets',
       });
     }
   },
