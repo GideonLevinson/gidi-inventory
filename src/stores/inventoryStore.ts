@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Part, Product, AllocationResult, ProductTarget } from '../types';
+import type { Part, Product, AllocationResult, ProductTarget, Transaction, TransactionProduct, TransactionPart } from '../types';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -9,6 +9,7 @@ interface InventoryState {
   products: Product[];
   allocations: AllocationResult[];
   targets: Record<string, ProductTarget>;
+  transactions: Transaction[];
   lastImportDate: string | null;
   selectedProductId: string | null;
   allocationMethod: 'priority' | 'ratio' | 'demandRatio';  // Allocation strategy to use
@@ -26,6 +27,9 @@ interface InventoryState {
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
   setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
   resetTargetsToDefaults: () => Promise<void>;
+  recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
+  recordShipment: (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
+  loadTransactions: () => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
@@ -34,6 +38,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   products: [],
   allocations: [],
   targets: {},
+  transactions: [],
   lastImportDate: null,
   selectedProductId: null,
   allocationMethod: 'demandRatio',  // Default to demand-ratio allocation
@@ -229,6 +234,86 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to reset targets',
+      });
+    }
+  },
+
+  // Record a sale/installation transaction
+  recordSale: async (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/sale`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, customer, products, parts, notes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to record sale');
+      }
+
+      const data = await response.json();
+      
+      // Update inventory state with returned data
+      set({
+        parts: data.state.parts,
+        allocations: data.state.allocations,
+      });
+
+      // Reload transactions
+      await get().loadTransactions();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to record sale',
+      });
+    }
+  },
+
+  // Record a shipment received transaction
+  recordShipment: async (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/shipment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, supplier, poNumber, products, parts, notes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to record shipment');
+      }
+
+      const data = await response.json();
+      
+      // Update inventory state with returned data
+      set({
+        parts: data.state.parts,
+        allocations: data.state.allocations,
+      });
+
+      // Reload transactions
+      await get().loadTransactions();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to record shipment',
+      });
+    }
+  },
+
+  // Load transaction history
+  loadTransactions: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions`);
+      if (!response.ok) {
+        throw new Error('Failed to load transactions');
+      }
+
+      const transactions = await response.json();
+      set({ transactions });
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      set({
+        error: error instanceof Error ? error.message : 'Failed to load transactions',
       });
     }
   },

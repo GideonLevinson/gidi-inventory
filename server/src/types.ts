@@ -72,9 +72,28 @@ export interface ParsedInventory {
   products: Product[];
 }
 
-// Product targets for ratio-based allocation
-export interface ProductTarget {
-  productName: string;      // שם מוצר - matches Product.name
-  minStock: number;         // מלאי מינימום רצוי
-  expectedInstalls: number; // צפי התקנות
+// Transaction item - product in a transaction
+export interface TransactionProduct {
+  productId: string;
+  productName: string;
+  quantity: number;
+}
+
+// Transaction item - part in a transaction
+export interface TransactionPart {
+  partSku: string;
+  quantity: number;
+}
+
+// Transaction record
+export interface Transaction {
+  id: string;                    // Unique ID (timestamp + random)
+  date: string;                  // ISO date string
+  type: 'sale' | 'shipment';     // Transaction type
+  customer?: string;             // Customer name (for sales)
+  supplier?: string;             // Supplier name (for shipments)
+  poNumber?: string;             // Purchase order number (for shipments)
+  products: TransactionProduct[]; // Products in transaction
+  parts: TransactionPart[];      // Individual parts in transaction
+  notes?: string;                // Additional notes
 }

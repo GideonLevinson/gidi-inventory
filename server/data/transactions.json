@@ -1,0 +1,17 @@
+[
+  {
+    "id": "TXN-1770827510498-1owgqn9ld",
+    "date": "2026-02-11",
+    "type": "sale",
+    "customer": "תלמי אלעזר, נמרוד",
+    "products": [
+      {
+        "productId": "שער-מטרה-db120x90",
+        "productName": "שער מטרה DB120X90",
+        "quantity": 2
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  }
+]

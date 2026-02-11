@@ -14,6 +14,9 @@ import type {
   AppState,
   AllocationResult,
   ProductTarget,
+  Transaction,
+  TransactionProduct,
+  TransactionPart,
 } from './types';
 import {
   allocateInventory,
@@ -166,6 +169,44 @@ async function saveTargets(targets: Record<string, ProductTarget>): Promise<void
     console.error('Error saving targets:', error);
     throw error;
   }
+}
+
+/**
+ * Load transactions from file
+ */
+async function loadTransactions(): Promise<Transaction[]> {
+  try {
+    const transactionsFile = path.join(DATA_DIR, 'transactions.json');
+    if (await fsExtra.pathExists(transactionsFile)) {
+      const jsonContent = await fs.readFile(transactionsFile, 'utf-8');
+      return JSON.parse(jsonContent);
+    }
+    return [];
+  } catch (error) {
+    console.warn('Error loading transactions:', error);
+    return [];
+  }
+}
+
+/**
+ * Save transactions to file
+ */
+async function saveTransactions(transactions: Transaction[]): Promise<void> {
+  try {
+    const transactionsFile = path.join(DATA_DIR, 'transactions.json');
+    const jsonContent = JSON.stringify(transactions, null, 2);
+    await fs.writeFile(transactionsFile, jsonContent, 'utf-8');
+  } catch (error) {
+    console.error('Error saving transactions:', error);
+    throw error;
+  }
+}
+
+/**
+ * Generate unique transaction ID
+ */
+function generateTransactionId(): string {
+  return `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // ============================================================================
@@ -386,6 +427,149 @@ app.get('/api/csv', async (req, res) => {
   } catch (error) {
     console.error('Error downloading CSV:', error);
     res.status(500).json({ error: 'Failed to download CSV' });
+  }
+});
+
+/**
+ * GET /api/transactions
+ * Get transaction history
+ */
+app.get('/api/transactions', async (req, res) => {
+  try {
+    const transactions = await loadTransactions();
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error loading transactions:', error);
+    res.status(500).json({ error: 'Failed to load transactions' });
+  }
+});
+
+/**
+ * POST /api/transactions/sale
+ * Record a sale/installation transaction
+ * Deducts products and parts from inventory
+ */
+app.post('/api/transactions/sale', express.json(), async (req, res) => {
+  try {
+    const { date, customer, products, parts, notes } = req.body;
+
+    if (!date || !customer) {
+      return res.status(400).json({ error: 'Missing required fields: date, customer' });
+    }
+
+    // Load current state
+    const state = await loadInventoryFromFile();
+
+    // Process products (deduct their parts from inventory)
+    for (const product of products || []) {
+      const prod = state.products.find(p => p.id === product.productId);
+      if (prod) {
+        for (const part of prod.parts) {
+          if (state.parts[part.partSku]) {
+            state.parts[part.partSku].currentInventory -= part.quantityRequired * product.quantity;
+          }
+        }
+      }
+    }
+
+    // Process individual parts (deduct directly from inventory)
+    for (const part of parts || []) {
+      if (state.parts[part.partSku]) {
+        state.parts[part.partSku].currentInventory -= part.quantity;
+      }
+    }
+
+    // Recalculate allocations
+    state.allocations = allocateInventory(state.products, state.parts);
+
+    // Save updated inventory
+    await saveInventoryToFile(state);
+
+    // Create and save transaction record
+    const transaction: Transaction = {
+      id: generateTransactionId(),
+      date,
+      type: 'sale',
+      customer,
+      products: products || [],
+      parts: parts || [],
+      notes,
+    };
+
+    const transactions = await loadTransactions();
+    transactions.push(transaction);
+    await saveTransactions(transactions);
+
+    res.json({ success: true, transaction, state });
+  } catch (error) {
+    console.error('Error recording sale:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+/**
+ * POST /api/transactions/shipment
+ * Record a shipment received transaction
+ * Adds products and parts to inventory
+ */
+app.post('/api/transactions/shipment', express.json(), async (req, res) => {
+  try {
+    const { date, supplier, poNumber, products, parts, notes } = req.body;
+
+    if (!date) {
+      return res.status(400).json({ error: 'Missing required field: date' });
+    }
+
+    // Load current state
+    const state = await loadInventoryFromFile();
+
+    // Process products (add their parts to inventory)
+    for (const product of products || []) {
+      const prod = state.products.find(p => p.id === product.productId);
+      if (prod) {
+        for (const part of prod.parts) {
+          if (state.parts[part.partSku]) {
+            state.parts[part.partSku].currentInventory += part.quantityRequired * product.quantity;
+          }
+        }
+      }
+    }
+
+    // Process individual parts (add directly to inventory)
+    for (const part of parts || []) {
+      if (state.parts[part.partSku]) {
+        state.parts[part.partSku].currentInventory += part.quantity;
+      }
+    }
+
+    // Recalculate allocations
+    state.allocations = allocateInventory(state.products, state.parts);
+
+    // Save updated inventory
+    await saveInventoryToFile(state);
+
+    // Create and save transaction record
+    const transaction: Transaction = {
+      id: generateTransactionId(),
+      date,
+      type: 'shipment',
+      supplier,
+      poNumber,
+      products: products || [],
+      parts: parts || [],
+      notes,
+    };
+
+    const transactions = await loadTransactions();
+    transactions.push(transaction);
+    await saveTransactions(transactions);
+
+    res.json({ success: true, transaction, state });
+  } catch (error) {
+    console.error('Error recording shipment:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
   }
 });
 

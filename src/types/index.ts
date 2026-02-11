@@ -103,3 +103,27 @@ export interface ProductTarget {
   minStock: number;         // מלאי מינימום רצוי
   expectedInstalls: number; // צפי התקנות
 }
+
+// Transaction types
+export interface TransactionProduct {
+  productId: string;
+  productName: string;
+  quantity: number;
+}
+
+export interface TransactionPart {
+  partSku: string;
+  quantity: number;
+}
+
+export interface Transaction {
+  id: string;                    // Unique ID
+  date: string;                  // ISO date string
+  type: 'sale' | 'shipment';     // Transaction type
+  customer?: string;             // Customer name (for sales)
+  supplier?: string;             // Supplier name (for shipments)
+  poNumber?: string;             // Purchase order number (for shipments)
+  products: TransactionProduct[]; // Products in transaction
+  parts: TransactionPart[];      // Individual parts in transaction
+  notes?: string;                // Additional notes
+}
