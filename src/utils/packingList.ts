@@ -75,18 +75,18 @@ export function formatPackingListForWhatsApp(
   // Products
   if (transaction.products && transaction.products.length > 0) {
     lines.push('✅ *PRODUCTS:*');
-    for (const product of transaction.products) {
-      lines.push(`☐ ${product.productName} × ${product.quantity}`);
-    }
+    transaction.products.forEach((product, idx) => {
+      lines.push(`${idx + 1}. ${product.productName} × ${product.quantity}`);
+    });
     lines.push('');
   }
 
   // Parts to load
   if (packingList.length > 0) {
     lines.push('📋 *PARTS TO LOAD:*');
-    for (const item of packingList) {
-      lines.push(`☐ ${item.sku} - ${item.description} × ${item.quantity}`);
-    }
+    packingList.forEach((item, idx) => {
+      lines.push(`${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
+    });
     lines.push('');
   }
 
@@ -94,9 +94,9 @@ export function formatPackingListForWhatsApp(
   if (transaction.materials && transaction.materials.trim()) {
     lines.push('🔧 *EXTRA MATERIALS:*');
     const materials = transaction.materials.split('\n').filter(m => m.trim());
-    for (const material of materials) {
-      lines.push(`☐ ${material.trim()}`);
-    }
+    materials.forEach((material, idx) => {
+      lines.push(`${idx + 1}. ${material.trim()}`);
+    });
     lines.push('');
   }
 
