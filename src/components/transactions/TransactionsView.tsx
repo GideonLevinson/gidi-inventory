@@ -8,6 +8,7 @@ export function TransactionsView() {
 
   // Sale form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saleLocation, setSaleLocation] = useState('');
   const [saleCustomer, setSaleCustomer] = useState('');
   const [saleProducts, setSaleProducts] = useState<TransactionProduct[]>([]);
   const [saleParts, setSaleParts] = useState<TransactionPart[]>([]);
@@ -39,6 +40,7 @@ export function TransactionsView() {
   const [editId, setEditId] = useState('');
   const [editType, setEditType] = useState<'sale' | 'shipment'>('sale');
   const [editDate, setEditDate] = useState('');
+  const [editLocation, setEditLocation] = useState('');
   const [editCustomer, setEditCustomer] = useState('');
   const [editSupplier, setEditSupplier] = useState('');
   const [editPO, setEditPO] = useState('');
@@ -128,10 +130,11 @@ export function TransactionsView() {
       return;
     }
 
-    await recordSale(saleDate, saleCustomer, saleProducts, saleParts, saleNotes, saleStatus, saleMaterials);
+    await recordSale(saleDate, saleCustomer, saleProducts, saleParts, saleNotes, saleStatus, saleMaterials, saleLocation);
     
     // Reset form
     setSaleDate(new Date().toISOString().split('T')[0]);
+    setSaleLocation('');
     setSaleCustomer('');
     setSaleProducts([]);
     setSaleParts([]);
@@ -204,6 +207,7 @@ export function TransactionsView() {
     setEditId(txn.id);
     setEditType(txn.type);
     setEditDate(txn.date.split('T')[0]);
+    setEditLocation(txn.location || '');
     setEditCustomer(txn.customer || '');
     setEditSupplier(txn.supplier || '');
     setEditPO(txn.poNumber || '');
@@ -273,6 +277,7 @@ export function TransactionsView() {
     await editTransaction(editId, {
       date: editDate,
       customer: editType === 'sale' ? editCustomer : undefined,
+      location: editType === 'sale' ? editLocation : undefined,
       supplier: editType === 'shipment' ? editSupplier : undefined,
       poNumber: editType === 'shipment' ? editPO : undefined,
       products: editProducts,
@@ -330,6 +335,17 @@ export function TransactionsView() {
                 type="date"
                 value={saleDate}
                 onChange={(e) => setSaleDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
+              <input
+                type="text"
+                value={saleLocation}
+                onChange={(e) => setSaleLocation(e.target.value)}
+                placeholder="e.g., Tel Aviv, Ramat Hasharon"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -851,15 +867,26 @@ export function TransactionsView() {
               </div>
 
               {editType === 'sale' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
-                  <input
-                    type="text"
-                    value={editCustomer}
-                    onChange={(e) => setEditCustomer(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
+                    <input
+                      type="text"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                    <input
+                      type="text"
+                      value={editCustomer}
+                      onChange={(e) => setEditCustomer(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </>
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Supplier (Optional)</label>

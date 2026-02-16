@@ -124,6 +124,7 @@ export interface Transaction {
   type: 'sale' | 'shipment';     // Transaction type
   status?: 'planned' | 'completed'; // Installation status (for sales)
   customer?: string;             // Customer name (for sales)
+  location?: string;             // Job location (for sales)
   supplier?: string;             // Supplier name (for shipments)
   poNumber?: string;             // Purchase order number (for shipments)
   products: TransactionProduct[]; // Products in transaction

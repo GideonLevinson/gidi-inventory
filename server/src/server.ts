@@ -512,7 +512,7 @@ app.get('/api/transactions', async (req, res) => {
  */
 app.post('/api/transactions/sale', express.json(), async (req, res) => {
   try {
-    const { date, customer, products, parts, notes, status, materials } = req.body;
+    const { date, customer, products, parts, notes, status, materials, location } = req.body;
 
     if (!date || !customer) {
       return res.status(400).json({ error: 'Missing required fields: date, customer' });
@@ -562,6 +562,7 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
       type: 'sale',
       status: installStatus,
       customer,
+      location,
       products: normalizedProducts,
       parts: parts || [],
       materials,
@@ -656,7 +657,7 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
 app.put('/api/transactions/:id', express.json(), async (req, res) => {
   try {
     const { id } = req.params;
-    const { date, customer, supplier, poNumber, products, parts, notes, status, materials } = req.body;
+    const { date, customer, supplier, poNumber, products, parts, notes, status, materials, location } = req.body;
 
     const transactions = await loadTransactions();
     const txnIndex = transactions.findIndex((t) => t.id === id);
@@ -739,6 +740,7 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
       date: date || oldTxn.date,
       status: newStatus,
       customer: customer ?? oldTxn.customer,
+      location: location ?? oldTxn.location,
       supplier: supplier ?? oldTxn.supplier,
       poNumber: poNumber ?? oldTxn.poNumber,
       products: normalizedNewProducts,

@@ -64,39 +64,44 @@ export function formatPackingListForWhatsApp(
 ): string {
   const lines: string[] = [];
   
-  // Header
-  lines.push('📦 *PACKING LIST*');
+  // Header with date in bold
+  const dateStr = new Date(transaction.date).toLocaleDateString('he-IL');
+  lines.push(`*${dateStr}*`);
+  
+  // Location and customer
+  if (transaction.location) {
+    lines.push(`📍 ${transaction.location}`);
+  }
   if (transaction.customer) {
     lines.push(`👤 ${transaction.customer}`);
   }
-  lines.push(`📅 ${new Date(transaction.date).toLocaleDateString('he-IL')}`);
   lines.push('');
 
   // Products
   if (transaction.products && transaction.products.length > 0) {
     lines.push('✅ *PRODUCTS:*');
-    transaction.products.forEach((product, idx) => {
-      lines.push(`${idx + 1}. ${product.productName} × ${product.quantity}`);
-    });
+    for (const product of transaction.products) {
+      lines.push(`• ${product.productName} × ${product.quantity}`);
+    }
     lines.push('');
   }
 
-  // Parts to load
+  // Parts to load - numbered list
   if (packingList.length > 0) {
-    lines.push('📋 *PARTS TO LOAD:*');
+    lines.push('*פריטים להעמסה:*');
     packingList.forEach((item, idx) => {
       lines.push(`${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
     });
     lines.push('');
   }
 
-  // Extra materials
+  // Extra materials - unnumbered with RTL support
   if (transaction.materials && transaction.materials.trim()) {
-    lines.push('🔧 *EXTRA MATERIALS:*');
+    lines.push('*כלים וחומר:*');
     const materials = transaction.materials.split('\n').filter(m => m.trim());
-    materials.forEach((material, idx) => {
-      lines.push(`${idx + 1}. ${material.trim()}`);
-    });
+    for (const material of materials) {
+      lines.push(`‏• ${material.trim()}`);
+    }
     lines.push('');
   }
 

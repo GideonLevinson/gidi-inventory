@@ -27,9 +27,9 @@ interface InventoryState {
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
   setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
   resetTargetsToDefaults: () => Promise<void>;
-  recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string) => Promise<void>;
+  recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string, location?: string) => Promise<void>;
   recordShipment: (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
-  editTransaction: (id: string, payload: { date?: string; customer?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string; status?: 'planned' | 'completed'; materials?: string }) => Promise<void>;
+  editTransaction: (id: string, payload: { date?: string; customer?: string; location?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string; status?: 'planned' | 'completed'; materials?: string }) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   loadTransactions: () => Promise<void>;
 }
@@ -241,12 +241,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   // Record a sale/installation transaction
-  recordSale: async (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string) => {
+  recordSale: async (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string, location?: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/sale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, customer, products, parts, notes, status, materials }),
+        body: JSON.stringify({ date, customer, products, parts, notes, status, materials, location }),
       });
 
       if (!response.ok) {
