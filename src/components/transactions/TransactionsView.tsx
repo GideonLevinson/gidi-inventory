@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useInventoryStore } from '../../stores/inventoryStore';
 import type { TransactionProduct, TransactionPart, Transaction } from '../../types';
-import { generatePackingList, formatPackingListForWhatsApp, copyToClipboard, openWhatsAppWithMessage } from '../../utils/packingList';
+import { generatePackingList, formatPackingListForWhatsApp, copyToClipboard } from '../../utils/packingList';
 
 export function TransactionsView() {
   const { products, parts, transactions, recordSale, recordShipment, loadTransactions, editTransaction, deleteTransaction } = useInventoryStore();
@@ -302,12 +302,6 @@ export function TransactionsView() {
       console.error('Failed to copy:', error);
       alert('Failed to copy to clipboard');
     }
-  };
-
-  const handleOpenWhatsApp = (txn: Transaction) => {
-    const packingList = generatePackingList(txn, parts);
-    const message = formatPackingListForWhatsApp(txn, packingList);
-    openWhatsAppWithMessage(message);
   };
 
   const handleDeleteTransaction = async (id: string, txn: Transaction) => {
@@ -813,14 +807,7 @@ export function TransactionsView() {
                               className="text-green-600 hover:text-green-800 text-sm font-medium"
                               title="Copy packing list to clipboard"
                             >
-                              📋 Copy
-                            </button>
-                            <button
-                              onClick={() => handleOpenWhatsApp(txn)}
-                              className="text-green-600 hover:text-green-800 text-sm font-medium"
-                              title="Open in WhatsApp"
-                            >
-                              💬 WhatsApp
+                              Copy
                             </button>
                             {txn.status === 'planned' && (
                               <button
@@ -828,7 +815,7 @@ export function TransactionsView() {
                                 className="text-red-600 hover:text-red-800 text-sm font-medium"
                                 title="Cancel planned installation"
                               >
-                                🗑️ Cancel
+                                Cancel
                               </button>
                             )}
                           </>

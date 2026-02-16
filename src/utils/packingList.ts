@@ -97,17 +97,19 @@ export function formatPackingListForWhatsApp(
 
   // Extra materials - unnumbered with RTL support
   if (transaction.materials && transaction.materials.trim()) {
-    lines.push('*כלים וחומר:*');
+    lines.push('*‏כלים וחומר:*');
     const materials = transaction.materials.split('\n').filter(m => m.trim());
     for (const material of materials) {
       lines.push(`‏• ${material.trim()}`);
     }
+    lines.push('‏');
   }
   
   if (transaction.notes && transaction.notes.trim()) {
     lines.push('');
-    lines.push('📝 *NOTES:*');
+    lines.push('*‏הערות:*');
     lines.push(transaction.notes);
+    lines.push('‏');
   }
 
   return lines.join('\n');
