@@ -102,7 +102,6 @@ export function formatPackingListForWhatsApp(
     for (const material of materials) {
       lines.push(`‏• ${material.trim()}`);
     }
-    lines.push('');
   }
   
   if (transaction.notes && transaction.notes.trim()) {
