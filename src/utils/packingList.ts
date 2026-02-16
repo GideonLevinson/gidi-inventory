@@ -79,18 +79,18 @@ export function formatPackingListForWhatsApp(
 
   // Products
   if (transaction.products && transaction.products.length > 0) {
-    lines.push('✅ *PRODUCTS:*');
+    lines.push('*התקנה*');
     for (const product of transaction.products) {
       lines.push(`• ${product.productName} × ${product.quantity}`);
     }
     lines.push('');
   }
 
-  // Parts to load - numbered list
+  // Parts to load - numbered list with LTR
   if (packingList.length > 0) {
     lines.push('*פריטים להעמסה:*');
     packingList.forEach((item, idx) => {
-      lines.push(`${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
+      lines.push(`\u200E${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
     });
     lines.push('');
   }
@@ -104,9 +104,6 @@ export function formatPackingListForWhatsApp(
     }
     lines.push('');
   }
-
-  // Summary
-  lines.push(`📊 Total SKUs: ${packingList.length}`);
   
   if (transaction.notes && transaction.notes.trim()) {
     lines.push('');
