@@ -81,16 +81,16 @@ export function formatPackingListForWhatsApp(
   if (transaction.products && transaction.products.length > 0) {
     lines.push('*התקנה*');
     for (const product of transaction.products) {
-      lines.push(`\u200E• ${product.productName} × ${product.quantity}`);
+      lines.push(`• ${product.productName} × ${product.quantity}`);
     }
     lines.push('');
   }
 
-  // Parts to load - numbered list with LTR
+  // Parts to load - numbered list
   if (packingList.length > 0) {
     lines.push('*פריטים להעמסה:*');
     packingList.forEach((item, idx) => {
-      lines.push(`\u200E${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
+      lines.push(`${idx + 1}. ${item.sku} - ${item.description} × ${item.quantity}`);
     });
     lines.push('');
   }
