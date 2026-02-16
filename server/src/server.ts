@@ -512,7 +512,7 @@ app.get('/api/transactions', async (req, res) => {
  */
 app.post('/api/transactions/sale', express.json(), async (req, res) => {
   try {
-    const { date, customer, products, parts, notes } = req.body;
+    const { date, customer, products, parts, notes, status, materials } = req.body;
 
     if (!date || !customer) {
       return res.status(400).json({ error: 'Missing required fields: date, customer' });
@@ -529,35 +529,42 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
       };
     });
 
-    // Process products (deduct their parts from inventory)
-    for (const product of normalizedProducts) {
-      if (product.parts && product.parts.length > 0) {
-        applyProductPartsDelta(state, product.parts, product.quantity, -1);
+    // Only deduct inventory if status is 'completed' or undefined (default)
+    const installStatus = status || 'completed';
+    
+    if (installStatus === 'completed') {
+      // Process products (deduct their parts from inventory)
+      for (const product of normalizedProducts) {
+        if (product.parts && product.parts.length > 0) {
+          applyProductPartsDelta(state, product.parts, product.quantity, -1);
+        }
       }
-    }
 
-    // Process individual parts (deduct directly from inventory)
-    for (const part of parts || []) {
-      if (state.parts[part.partSku]) {
-        state.parts[part.partSku].currentInventory -= part.quantity;
+      // Process individual parts (deduct directly from inventory)
+      for (const part of parts || []) {
+        if (state.parts[part.partSku]) {
+          state.parts[part.partSku].currentInventory -= part.quantity;
+        }
       }
+
+      // Recalculate allocations
+      const targets = await loadTargets();
+      state.allocations = allocateInventory(state.products, state.parts, targets);
+
+      // Save updated inventory
+      await saveInventoryToFile(state);
     }
-
-    // Recalculate allocations
-    const targets = await loadTargets();
-    state.allocations = allocateInventory(state.products, state.parts, targets);
-
-    // Save updated inventory
-    await saveInventoryToFile(state);
 
     // Create and save transaction record
     const transaction: Transaction = {
       id: generateTransactionId(),
       date,
       type: 'sale',
+      status: installStatus,
       customer,
       products: normalizedProducts,
       parts: parts || [],
+      materials,
       notes,
     };
 
@@ -649,7 +656,7 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
 app.put('/api/transactions/:id', express.json(), async (req, res) => {
   try {
     const { id } = req.params;
-    const { date, customer, supplier, poNumber, products, parts, notes } = req.body;
+    const { date, customer, supplier, poNumber, products, parts, notes, status, materials } = req.body;
 
     const transactions = await loadTransactions();
     const txnIndex = transactions.findIndex((t) => t.id === id);
@@ -661,6 +668,7 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
     const oldTxn = transactions[txnIndex];
     const newProducts = products || oldTxn.products || [];
     const newParts = parts || oldTxn.parts || [];
+    const newStatus = status ?? oldTxn.status ?? 'completed';
 
     const state = await loadInventoryFromFile();
 
@@ -689,29 +697,37 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
       };
     });
 
-    // Undo old transaction
-    const undoDirection = oldTxn.type === 'sale' ? 1 : -1;
-    for (const product of normalizedOldProducts) {
-      if (product.parts && product.parts.length > 0) {
-        applyProductPartsDelta(state, product.parts, product.quantity, undoDirection);
+    // Determine if we need to undo old inventory changes
+    const oldWasCompleted = (oldTxn.status ?? 'completed') === 'completed';
+    const newIsCompleted = newStatus === 'completed';
+
+    // Undo old transaction if it was completed
+    if (oldWasCompleted) {
+      const undoDirection = oldTxn.type === 'sale' ? 1 : -1;
+      for (const product of normalizedOldProducts) {
+        if (product.parts && product.parts.length > 0) {
+          applyProductPartsDelta(state, product.parts, product.quantity, undoDirection);
+        }
       }
-    }
-    for (const part of oldTxn.parts || []) {
-      if (state.parts[part.partSku]) {
-        state.parts[part.partSku].currentInventory += undoDirection * part.quantity;
+      for (const part of oldTxn.parts || []) {
+        if (state.parts[part.partSku]) {
+          state.parts[part.partSku].currentInventory += undoDirection * part.quantity;
+        }
       }
     }
 
-    // Apply new transaction
-    const applyDirection = oldTxn.type === 'sale' ? -1 : 1;
-    for (const product of normalizedNewProducts) {
-      if (product.parts && product.parts.length > 0) {
-        applyProductPartsDelta(state, product.parts, product.quantity, applyDirection);
+    // Apply new transaction if it's completed
+    if (newIsCompleted) {
+      const applyDirection = oldTxn.type === 'sale' ? -1 : 1;
+      for (const product of normalizedNewProducts) {
+        if (product.parts && product.parts.length > 0) {
+          applyProductPartsDelta(state, product.parts, product.quantity, applyDirection);
+        }
       }
-    }
-    for (const part of newParts) {
-      if (state.parts[part.partSku]) {
-        state.parts[part.partSku].currentInventory += applyDirection * part.quantity;
+      for (const part of newParts) {
+        if (state.parts[part.partSku]) {
+          state.parts[part.partSku].currentInventory += applyDirection * part.quantity;
+        }
       }
     }
 
@@ -721,11 +737,13 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
     const updatedTxn: Transaction = {
       ...oldTxn,
       date: date || oldTxn.date,
+      status: newStatus,
       customer: customer ?? oldTxn.customer,
       supplier: supplier ?? oldTxn.supplier,
       poNumber: poNumber ?? oldTxn.poNumber,
       products: normalizedNewProducts,
       parts: newParts,
+      materials: materials ?? oldTxn.materials,
       notes: notes ?? oldTxn.notes,
     };
 
@@ -735,6 +753,40 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
     res.json({ success: true, transaction: updatedTxn, state });
   } catch (error) {
     console.error('Error editing transaction:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+/**
+ * DELETE /api/transactions/:id
+ * Delete a transaction (only if status is 'planned')
+ */
+app.delete('/api/transactions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const transactions = await loadTransactions();
+    const txnIndex = transactions.findIndex((t) => t.id === id);
+
+    if (txnIndex === -1) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const txn = transactions[txnIndex];
+
+    // Only allow deleting planned installations (sales that don't deduct inventory)
+    if (txn.type === 'sale' && txn.status === 'planned') {
+      transactions.splice(txnIndex, 1);
+      await saveTransactions(transactions);
+      res.json({ success: true, message: 'Planned installation cancelled' });
+    } else if (txn.type === 'sale' && txn.status === 'completed') {
+      return res.status(400).json({ error: 'Cannot delete completed sales. Please edit to planned status first.' });
+    } else {
+      return res.status(400).json({ error: 'Can only delete planned installations' });
+    }
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: errorMessage });
   }

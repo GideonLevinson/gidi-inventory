@@ -91,10 +91,12 @@ export interface Transaction {
   id: string;                    // Unique ID (timestamp + random)
   date: string;                  // ISO date string
   type: 'sale' | 'shipment';     // Transaction type
+  status?: 'planned' | 'completed'; // Installation status (for sales)
   customer?: string;             // Customer name (for sales)
   supplier?: string;             // Supplier name (for shipments)
   poNumber?: string;             // Purchase order number (for shipments)
   products: TransactionProduct[]; // Products in transaction
   parts: TransactionPart[];      // Individual parts in transaction
+  materials?: string;            // Extra materials needed (for sales)
   notes?: string;                // Additional notes
 }

@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useInventoryStore } from '../../stores/inventoryStore';
-import type { TransactionProduct, TransactionPart } from '../../types';
+import type { TransactionProduct, TransactionPart, Transaction } from '../../types';
+import { generatePackingList, formatPackingListForWhatsApp, copyToClipboard, openWhatsAppWithMessage } from '../../utils/packingList';
 
 export function TransactionsView() {
-  const { products, parts, transactions, recordSale, recordShipment, loadTransactions, editTransaction } = useInventoryStore();
+  const { products, parts, transactions, recordSale, recordShipment, loadTransactions, editTransaction, deleteTransaction } = useInventoryStore();
 
   // Sale form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [saleCustomer, setSaleCustomer] = useState('');
   const [saleProducts, setSaleProducts] = useState<TransactionProduct[]>([]);
   const [saleParts, setSaleParts] = useState<TransactionPart[]>([]);
+  const [saleMaterials, setSaleMaterials] = useState('');
+  const [saleStatus, setSaleStatus] = useState<'planned' | 'completed'>('planned');
   const [saleNotes, setSaleNotes] = useState('');
 
   // Shipment form state
@@ -41,6 +44,8 @@ export function TransactionsView() {
   const [editPO, setEditPO] = useState('');
   const [editProducts, setEditProducts] = useState<TransactionProduct[]>([]);
   const [editParts, setEditParts] = useState<TransactionPart[]>([]);
+  const [editMaterials, setEditMaterials] = useState('');
+  const [editStatus, setEditStatus] = useState<'planned' | 'completed'>('completed');
   const [editNotes, setEditNotes] = useState('');
 
   const [editProductSelect, setEditProductSelect] = useState('');
@@ -123,13 +128,15 @@ export function TransactionsView() {
       return;
     }
 
-    await recordSale(saleDate, saleCustomer, saleProducts, saleParts, saleNotes);
+    await recordSale(saleDate, saleCustomer, saleProducts, saleParts, saleNotes, saleStatus, saleMaterials);
     
     // Reset form
     setSaleDate(new Date().toISOString().split('T')[0]);
     setSaleCustomer('');
     setSaleProducts([]);
     setSaleParts([]);
+    setSaleMaterials('');
+    setSaleStatus('planned');
     setSaleNotes('');
   };
 
@@ -193,7 +200,7 @@ export function TransactionsView() {
   };
 
   // Edit handlers
-  const openEditModal = (txn: { id: string; type: 'sale' | 'shipment'; date: string; customer?: string; supplier?: string; poNumber?: string; products: TransactionProduct[]; parts: TransactionPart[]; notes?: string }) => {
+  const openEditModal = (txn: Transaction) => {
     setEditId(txn.id);
     setEditType(txn.type);
     setEditDate(txn.date.split('T')[0]);
@@ -202,6 +209,8 @@ export function TransactionsView() {
     setEditPO(txn.poNumber || '');
     setEditProducts(txn.products || []);
     setEditParts(txn.parts || []);
+    setEditMaterials(txn.materials || '');
+    setEditStatus(txn.status || 'completed');
     setEditNotes(txn.notes || '');
     setEditProductSelect('');
     setEditProductQty('1');
@@ -268,10 +277,42 @@ export function TransactionsView() {
       poNumber: editType === 'shipment' ? editPO : undefined,
       products: editProducts,
       parts: editParts,
+      materials: editType === 'sale' ? editMaterials : undefined,
+      status: editType === 'sale' ? editStatus : undefined,
       notes: editNotes,
     });
 
     closeEditModal();
+  };
+
+  // Packing list handlers
+  const handleCopyPackingList = async (txn: Transaction) => {
+    const packingList = generatePackingList(txn, parts);
+    const message = formatPackingListForWhatsApp(txn, packingList);
+    
+    try {
+      await copyToClipboard(message);
+      alert('Packing list copied to clipboard! ✓');
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      alert('Failed to copy to clipboard');
+    }
+  };
+
+  const handleOpenWhatsApp = (txn: Transaction) => {
+    const packingList = generatePackingList(txn, parts);
+    const message = formatPackingListForWhatsApp(txn, packingList);
+    openWhatsAppWithMessage(message);
+  };
+
+  const handleDeleteTransaction = async (id: string, txn: Transaction) => {
+    if (txn.type === 'sale' && txn.status === 'planned') {
+      if (confirm(`Cancel planned installation for ${txn.customer}?`)) {
+        await deleteTransaction(id);
+      }
+    } else {
+      alert('Can only cancel planned installations');
+    }
   };
 
   return (
@@ -399,6 +440,52 @@ export function TransactionsView() {
             )}
           </div>
 
+          {/* Extra Materials */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Extra Materials (Optional)</label>
+            <textarea
+              value={saleMaterials}
+              onChange={(e) => setSaleMaterials(e.target.value)}
+              placeholder="e.g., 2 bags concrete&#10;20 anchors M12&#10;Power drill"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">List materials needed for installation (one per line)</p>
+          </div>
+
+          {/* Installation Status */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Installation Status *</label>
+            <div className="space-y-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  value="planned"
+                  checked={saleStatus === 'planned'}
+                  onChange={(e) => setSaleStatus(e.target.value as 'planned')}
+                  className="mr-2"
+                />
+                <div>
+                  <span className="font-medium">📅 Plan Installation</span>
+                  <p className="text-xs text-gray-600">Save for later, generate packing list. No inventory deduction.</p>
+                </div>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  value="completed"
+                  checked={saleStatus === 'completed'}
+                  onChange={(e) => setSaleStatus(e.target.value as 'completed')}
+                  className="mr-2"
+                />
+                <div>
+                  <span className="font-medium">✅ Mark as Completed</span>
+                  <p className="text-xs text-gray-600">Installation done. Deduct parts from inventory now.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
           {/* Notes */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
@@ -413,9 +500,13 @@ export function TransactionsView() {
 
           <button
             onClick={handleRecordSale}
-            className="w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700"
+            className={`w-full px-4 py-3 text-white font-semibold rounded-md ${
+              saleStatus === 'planned' 
+                ? 'bg-blue-600 hover:bg-blue-700' 
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
-            Record Sale
+            {saleStatus === 'planned' ? '📅 Plan Installation' : '✅ Record Completed Sale'}
           </button>
         </div>
 
@@ -658,11 +749,18 @@ export function TransactionsView() {
                   <tr key={txn.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2">{new Date(txn.date).toLocaleDateString()}</td>
                     <td className="px-4 py-2">
-                      <span className={`px-3 py-1 rounded-full text-white text-xs font-semibold ${
-                        txn.type === 'sale' ? 'bg-red-500' : 'bg-green-500'
-                      }`}>
-                        {txn.type === 'sale' ? '📤 Sale' : '📥 Shipment'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-3 py-1 rounded-full text-white text-xs font-semibold inline-block ${
+                          txn.type === 'sale' ? 'bg-red-500' : 'bg-green-500'
+                        }`}>
+                          {txn.type === 'sale' ? '📤 Sale' : '📥 Shipment'}
+                        </span>
+                        {txn.type === 'sale' && txn.status === 'planned' && (
+                          <span className="px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-semibold inline-block">
+                            📅 Planned
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2">{txn.customer || txn.supplier || '-'}</td>
                     <td className="px-4 py-2 text-xs">
@@ -685,12 +783,41 @@ export function TransactionsView() {
                     </td>
                     <td className="px-4 py-2 text-gray-600">{txn.notes || '-'}</td>
                     <td className="px-4 py-2">
-                      <button
-                        onClick={() => openEditModal(txn)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => openEditModal(txn)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Edit
+                        </button>
+                        {txn.type === 'sale' && (
+                          <>
+                            <button
+                              onClick={() => handleCopyPackingList(txn)}
+                              className="text-green-600 hover:text-green-800 text-sm font-medium"
+                              title="Copy packing list to clipboard"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={() => handleOpenWhatsApp(txn)}
+                              className="text-green-600 hover:text-green-800 text-sm font-medium"
+                              title="Open in WhatsApp"
+                            >
+                              💬 WhatsApp
+                            </button>
+                            {txn.status === 'planned' && (
+                              <button
+                                onClick={() => handleDeleteTransaction(txn.id, txn)}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                title="Cancel planned installation"
+                              >
+                                🗑️ Cancel
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -849,6 +976,55 @@ export function TransactionsView() {
                 </div>
               )}
             </div>
+
+            {/* Materials (for sales only) */}
+            {editType === 'sale' && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Extra Materials (Optional)</label>
+                <textarea
+                  value={editMaterials}
+                  onChange={(e) => setEditMaterials(e.target.value)}
+                  placeholder="e.g., 2 bags concrete&#10;20 anchors M12&#10;Power drill"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
+
+            {/* Status (for sales only) */}
+            {editType === 'sale' && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Installation Status *</label>
+                <div className="space-y-2">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="planned"
+                      checked={editStatus === 'planned'}
+                      onChange={(e) => setEditStatus(e.target.value as 'planned')}
+                      className="mr-2"
+                    />
+                    <div>
+                      <span className="font-medium">📅 Planned</span>
+                      <p className="text-xs text-gray-600">No inventory deduction</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      value="completed"
+                      checked={editStatus === 'completed'}
+                      onChange={(e) => setEditStatus(e.target.value as 'completed')}
+                      className="mr-2"
+                    />
+                    <div>
+                      <span className="font-medium">✅ Completed</span>
+                      <p className="text-xs text-gray-600">Deduct from inventory</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>

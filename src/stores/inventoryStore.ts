@@ -27,9 +27,10 @@ interface InventoryState {
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
   setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
   resetTargetsToDefaults: () => Promise<void>;
-  recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
+  recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string) => Promise<void>;
   recordShipment: (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
-  editTransaction: (id: string, payload: { date?: string; customer?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string }) => Promise<void>;
+  editTransaction: (id: string, payload: { date?: string; customer?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string; status?: 'planned' | 'completed'; materials?: string }) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   loadTransactions: () => Promise<void>;
 }
 
@@ -240,12 +241,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   },
 
   // Record a sale/installation transaction
-  recordSale: async (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => {
+  recordSale: async (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/transactions/sale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, customer, products, parts, notes }),
+        body: JSON.stringify({ date, customer, products, parts, notes, status, materials }),
       });
 
       if (!response.ok) {
@@ -326,6 +327,26 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to edit transaction',
+      });
+    }
+  },
+
+  // Delete a transaction
+  deleteTransaction: async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete transaction');
+      }
+
+      await get().loadTransactions();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete transaction',
       });
     }
   },
