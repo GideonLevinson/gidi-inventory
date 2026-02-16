@@ -3,7 +3,7 @@ import { useInventoryStore } from '../../stores/inventoryStore';
 import type { TransactionProduct, TransactionPart } from '../../types';
 
 export function TransactionsView() {
-  const { products, parts, transactions, recordSale, recordShipment, loadTransactions } = useInventoryStore();
+  const { products, parts, transactions, recordSale, recordShipment, loadTransactions, editTransaction } = useInventoryStore();
 
   // Sale form state
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
@@ -31,6 +31,46 @@ export function TransactionsView() {
   const [shipmentPartSelect, setShipmentPartSelect] = useState('');
   const [shipmentPartQty, setShipmentPartQty] = useState('1');
 
+  // Edit modal state
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editId, setEditId] = useState('');
+  const [editType, setEditType] = useState<'sale' | 'shipment'>('sale');
+  const [editDate, setEditDate] = useState('');
+  const [editCustomer, setEditCustomer] = useState('');
+  const [editSupplier, setEditSupplier] = useState('');
+  const [editPO, setEditPO] = useState('');
+  const [editProducts, setEditProducts] = useState<TransactionProduct[]>([]);
+  const [editParts, setEditParts] = useState<TransactionPart[]>([]);
+  const [editNotes, setEditNotes] = useState('');
+
+  const [editProductSelect, setEditProductSelect] = useState('');
+  const [editProductQty, setEditProductQty] = useState('1');
+  const [editPartSelect, setEditPartSelect] = useState('');
+  const [editPartQty, setEditPartQty] = useState('1');
+
+  const [sortKey, setSortKey] = useState<'date' | 'type' | 'party' | 'products' | 'parts' | 'notes'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    switch (sortKey) {
+      case 'date':
+        return (new Date(a.date).getTime() - new Date(b.date).getTime()) * dir;
+      case 'type':
+        return a.type.localeCompare(b.type) * dir;
+      case 'party':
+        return (a.customer || a.supplier || '').localeCompare(b.customer || b.supplier || '') * dir;
+      case 'products':
+        return (a.products.length - b.products.length) * dir;
+      case 'parts':
+        return (a.parts.length - b.parts.length) * dir;
+      case 'notes':
+        return (a.notes || '').localeCompare(b.notes || '') * dir;
+      default:
+        return 0;
+    }
+  });
+
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
@@ -46,7 +86,7 @@ export function TransactionsView() {
       {
         productId: product.id,
         productName: product.name,
-        quantity: parseInt(saleProductQty),
+        quantity: parseFloat(saleProductQty),
       },
     ]);
     setSaleProductSelect('');
@@ -66,7 +106,7 @@ export function TransactionsView() {
       ...saleParts,
       {
         partSku: part.sku,
-        quantity: parseInt(salePartQty),
+        quantity: parseFloat(salePartQty),
       },
     ]);
     setSalePartSelect('');
@@ -104,7 +144,7 @@ export function TransactionsView() {
       {
         productId: product.id,
         productName: product.name,
-        quantity: parseInt(shipmentProductQty),
+        quantity: parseFloat(shipmentProductQty),
       },
     ]);
     setShipmentProductSelect('');
@@ -124,7 +164,7 @@ export function TransactionsView() {
       ...shipmentParts,
       {
         partSku: part.sku,
-        quantity: parseInt(shipmentPartQty),
+        quantity: parseFloat(shipmentPartQty),
       },
     ]);
     setShipmentPartSelect('');
@@ -150,6 +190,88 @@ export function TransactionsView() {
     setShipmentProducts([]);
     setShipmentParts([]);
     setShipmentNotes('');
+  };
+
+  // Edit handlers
+  const openEditModal = (txn: { id: string; type: 'sale' | 'shipment'; date: string; customer?: string; supplier?: string; poNumber?: string; products: TransactionProduct[]; parts: TransactionPart[]; notes?: string }) => {
+    setEditId(txn.id);
+    setEditType(txn.type);
+    setEditDate(txn.date.split('T')[0]);
+    setEditCustomer(txn.customer || '');
+    setEditSupplier(txn.supplier || '');
+    setEditPO(txn.poNumber || '');
+    setEditProducts(txn.products || []);
+    setEditParts(txn.parts || []);
+    setEditNotes(txn.notes || '');
+    setEditProductSelect('');
+    setEditProductQty('1');
+    setEditPartSelect('');
+    setEditPartQty('1');
+    setIsEditOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditOpen(false);
+  };
+
+  const addEditProduct = () => {
+    if (!editProductSelect || !editProductQty) return;
+    const product = products.find(p => p.id === editProductSelect);
+    if (!product) return;
+
+    setEditProducts([
+      ...editProducts,
+      {
+        productId: product.id,
+        productName: product.name,
+        quantity: parseFloat(editProductQty),
+      },
+    ]);
+    setEditProductSelect('');
+    setEditProductQty('1');
+  };
+
+  const removeEditProduct = (index: number) => {
+    setEditProducts(editProducts.filter((_, i) => i !== index));
+  };
+
+  const addEditPart = () => {
+    if (!editPartSelect || !editPartQty) return;
+    const part = parts[editPartSelect];
+    if (!part) return;
+
+    setEditParts([
+      ...editParts,
+      {
+        partSku: part.sku,
+        quantity: parseFloat(editPartQty),
+      },
+    ]);
+    setEditPartSelect('');
+    setEditPartQty('1');
+  };
+
+  const removeEditPart = (index: number) => {
+    setEditParts(editParts.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editDate || (editType === 'sale' && !editCustomer)) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    await editTransaction(editId, {
+      date: editDate,
+      customer: editType === 'sale' ? editCustomer : undefined,
+      supplier: editType === 'shipment' ? editSupplier : undefined,
+      poNumber: editType === 'shipment' ? editPO : undefined,
+      products: editProducts,
+      parts: editParts,
+      notes: editNotes,
+    });
+
+    closeEditModal();
   };
 
   return (
@@ -201,7 +323,8 @@ export function TransactionsView() {
                 type="number"
                 value={saleProductQty}
                 onChange={(e) => setSaleProductQty(e.target.value)}
-                min="1"
+                min="0"
+                step="1"
                 className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -247,7 +370,8 @@ export function TransactionsView() {
                 type="number"
                 value={salePartQty}
                 onChange={(e) => setSalePartQty(e.target.value)}
-                min="1"
+                min="0"
+                step="1"
                 className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -352,7 +476,8 @@ export function TransactionsView() {
                 type="number"
                 value={shipmentProductQty}
                 onChange={(e) => setShipmentProductQty(e.target.value)}
-                min="1"
+                min="0"
+                step="1"
                 className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -398,7 +523,8 @@ export function TransactionsView() {
                 type="number"
                 value={shipmentPartQty}
                 onChange={(e) => setShipmentPartQty(e.target.value)}
-                min="1"
+                min="0"
+                step="1"
                 className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
@@ -458,16 +584,77 @@ export function TransactionsView() {
             <table className="w-full text-sm">
               <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="px-4 py-2 text-left">Date</th>
-                  <th className="px-4 py-2 text-left">Type</th>
-                  <th className="px-4 py-2 text-left">Customer/Supplier</th>
-                  <th className="px-4 py-2 text-left">Products</th>
-                  <th className="px-4 py-2 text-left">Parts</th>
-                  <th className="px-4 py-2 text-left">Notes</th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('date');
+                        setSortDir(sortKey === 'date' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Date {sortKey === 'date' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('type');
+                        setSortDir(sortKey === 'type' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Type {sortKey === 'type' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('party');
+                        setSortDir(sortKey === 'party' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Customer/Supplier {sortKey === 'party' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('products');
+                        setSortDir(sortKey === 'products' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Products {sortKey === 'products' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('parts');
+                        setSortDir(sortKey === 'parts' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Parts {sortKey === 'parts' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">
+                    <button
+                      onClick={() => {
+                        setSortKey('notes');
+                        setSortDir(sortKey === 'notes' && sortDir === 'desc' ? 'asc' : 'desc');
+                      }}
+                      className="font-medium text-gray-700 hover:text-gray-900"
+                    >
+                      Notes {sortKey === 'notes' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                    </button>
+                  </th>
+                  <th className="px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((txn) => (
+                {sortedTransactions.map((txn) => (
                   <tr key={txn.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2">{new Date(txn.date).toLocaleDateString()}</td>
                     <td className="px-4 py-2">
@@ -497,6 +684,14 @@ export function TransactionsView() {
                       ) : '-'}
                     </td>
                     <td className="px-4 py-2 text-gray-600">{txn.notes || '-'}</td>
+                    <td className="px-4 py-2">
+                      <button
+                        onClick={() => openEditModal(txn)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -504,6 +699,184 @@ export function TransactionsView() {
           </div>
         )}
       </div>
+
+      {isEditOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Edit Transaction</h3>
+              <button onClick={closeEditModal} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            <div className="mb-4 text-sm text-gray-600">
+              Type: <span className="font-semibold">{editType === 'sale' ? 'Sale' : 'Shipment'}</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {editType === 'sale' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    value={editCustomer}
+                    onChange={(e) => setEditCustomer(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier (Optional)</label>
+                  <input
+                    type="text"
+                    value={editSupplier}
+                    onChange={(e) => setEditSupplier(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+
+              {editType === 'shipment' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PO Number (Optional)</label>
+                  <input
+                    type="text"
+                    value={editPO}
+                    onChange={(e) => setEditPO(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-3">Products</h4>
+              <div className="flex gap-2 mb-3">
+                <select
+                  value={editProductSelect}
+                  onChange={(e) => setEditProductSelect(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Product...</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={editProductQty}
+                  onChange={(e) => setEditProductQty(e.target.value)}
+                  min="0"
+                  step="1"
+                  className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={addEditProduct}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Add
+                </button>
+              </div>
+
+              {editProducts.length > 0 && (
+                <div className="space-y-2">
+                  {editProducts.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white p-2 rounded">
+                      <span className="text-sm">{item.productName} × {item.quantity}</span>
+                      <button
+                        onClick={() => removeEditProduct(idx)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6 p-4 bg-green-50 rounded-lg">
+              <h4 className="font-semibold text-green-900 mb-3">Individual Parts</h4>
+              <div className="flex gap-2 mb-3">
+                <select
+                  value={editPartSelect}
+                  onChange={(e) => setEditPartSelect(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Part...</option>
+                  {Object.values(parts).map((p) => (
+                    <option key={p.sku} value={p.sku}>{p.description} ({p.sku})</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={editPartQty}
+                  onChange={(e) => setEditPartQty(e.target.value)}
+                  min="0"
+                  step="1"
+                  className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={addEditPart}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                >
+                  Add
+                </button>
+              </div>
+
+              {editParts.length > 0 && (
+                <div className="space-y-2">
+                  {editParts.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white p-2 rounded">
+                      <span className="text-sm">{parts[item.partSku]?.description} ({item.partSku}) × {item.quantity}</span>
+                      <button
+                        onClick={() => removeEditPart(idx)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeEditModal}
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,16 +1,23 @@
 import type { Product, Part, AllocationResult, ProductTarget } from './types';
 
 /**
- * Priority-based greedy allocation algorithm
- * Allocates parts to products in priority order (lower priority number = higher priority)
+ * Priority-based greedy allocation algorithm with minStock awareness
+ * 
+ * Allocates parts to products in two phases:
+ * 1. Phase 1: Allocate to all products with minStock > 0, in priority order
+ *    - Each product gets allocated up to its minStock target
+ * 2. Phase 2: Allocate remaining parts to ALL products in priority order
+ *    - This allows products to build beyond minStock once all targets are met
  *
  * @param products - Products sorted by priority (ascending)
  * @param parts - Parts inventory (original, not modified)
+ * @param targets - Target minimums per product (required for minStock awareness)
  * @returns Allocation results for each product
  */
 export function allocateInventory(
   products: Product[],
-  parts: Record<string, Part>
+  parts: Record<string, Part>,
+  targets?: Record<string, ProductTarget>
 ): AllocationResult[] {
   // Create mutable inventory copy for tracking remaining parts
   const availableInventory = new Map<string, number>();
@@ -18,53 +25,100 @@ export function allocateInventory(
     availableInventory.set(part.sku, part.currentInventory);
   });
 
+  // Separate products by whether they have minStock targets
+  const hasTargets = targets && Object.keys(targets).length > 0;
+  
+  const productsWithMinStock = hasTargets
+    ? products.filter((p) => {
+        const target = targets![p.name];
+        return target && target.minStock > 0;
+      })
+    : [];
+  
+  const productsWithoutMinStock = hasTargets
+    ? products.filter((p) => {
+        const target = targets![p.name];
+        return !target || target.minStock === 0;
+      })
+    : products;
+
   const results: AllocationResult[] = [];
+  const completed = new Map<string, number>();
+  const allocatedParts = new Map<string, Record<string, number>>();
+
+  // Initialize tracking maps
+  products.forEach((p) => {
+    completed.set(p.id, 0);
+    const partsAlloc: Record<string, number> = {};
+    p.parts.forEach(({ partSku }) => {
+      partsAlloc[partSku] = 0;
+    });
+    allocatedParts.set(p.id, partsAlloc);
+  });
 
   // Sort products by priority (lower = higher priority)
-  const sortedProducts = [...products].sort((a, b) => a.priority - b.priority);
+  const sortedWithMinStock = [...productsWithMinStock].sort((a, b) => a.priority - b.priority);
+  const sortedWithoutMinStock = [...productsWithoutMinStock].sort((a, b) => a.priority - b.priority);
 
-  // Process products in priority order
-  for (const product of sortedProducts) {
-    // Step 1: Calculate max buildable for this product
-    let maxBuildable = Infinity;
+  // Phase 1: Allocate to products WITH minStock targets
+  for (const product of sortedWithMinStock) {
+    const target = targets![product.name];
+    const needToReach = target.minStock;
+
+    while ((completed.get(product.id) || 0) < needToReach && canBuildOne(product, availableInventory)) {
+      deductPartsForOne(product, availableInventory);
+      completed.set(product.id, (completed.get(product.id) || 0) + 1);
+
+      const prodAlloc = allocatedParts.get(product.id)!;
+      for (const { partSku, quantityRequired } of product.parts) {
+        prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+      }
+    }
+  }
+
+  // Phase 2: Allocate remaining parts to ALL products (including those with targets)
+  const sortedAllProducts = [...products].sort((a, b) => a.priority - b.priority);
+  for (const product of sortedAllProducts) {
+    while (canBuildOne(product, availableInventory)) {
+      deductPartsForOne(product, availableInventory);
+      completed.set(product.id, (completed.get(product.id) || 0) + 1);
+
+      const prodAlloc = allocatedParts.get(product.id)!;
+      for (const { partSku, quantityRequired } of product.parts) {
+        prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+      }
+    }
+  }
+
+  // Build results
+  for (const product of products) {
+    const maxBuildable = completed.get(product.id) || 0;
+    const prodAlloc = allocatedParts.get(product.id) || {};
+
+    // Calculate bottleneck parts (parts that limit further production)
     const bottleneckParts: string[] = [];
+    let minMoreCanBuild = Infinity;
 
     for (const { partSku, quantityRequired } of product.parts) {
       if (quantityRequired <= 0) continue;
-
       const available = availableInventory.get(partSku) || 0;
-      const canBuild = Math.floor(available / quantityRequired);
+      const canBuildMore = Math.floor(available / quantityRequired);
 
-      if (canBuild < maxBuildable) {
-        maxBuildable = canBuild;
-        bottleneckParts.length = 0; // Reset bottlenecks
+      if (canBuildMore < minMoreCanBuild) {
+        minMoreCanBuild = canBuildMore;
+        bottleneckParts.length = 0;
         bottleneckParts.push(partSku);
-      } else if (canBuild === maxBuildable && canBuild < Infinity) {
+      } else if (canBuildMore === minMoreCanBuild && canBuildMore < Infinity) {
         bottleneckParts.push(partSku);
       }
-    }
-
-    // Handle edge case: product with no parts
-    if (maxBuildable === Infinity) maxBuildable = 0;
-
-    // Step 2: Allocate parts (consume from available inventory)
-    const allocatedParts: Record<string, number> = {};
-
-    for (const { partSku, quantityRequired } of product.parts) {
-      const allocated = maxBuildable * quantityRequired;
-      allocatedParts[partSku] = allocated;
-
-      // Deduct from available inventory
-      const remaining = (availableInventory.get(partSku) || 0) - allocated;
-      availableInventory.set(partSku, remaining);
     }
 
     results.push({
       productId: product.id,
       productName: product.name,
       maxBuildable,
-      allocatedParts,
-      bottleneckParts,
+      allocatedParts: prodAlloc,
+      bottleneckParts: minMoreCanBuild === 0 ? bottleneckParts : [],
     });
   }
 
@@ -110,6 +164,7 @@ function deductPartsForOne(
  * 2. Prioritize products with lowest completion ratio (furthest from target)
  * 3. Iterate: allocate 1 unit to lowest-ratio product, recalculate, repeat
  * 4. Products with minStock = 0 are built last (only with leftover parts)
+ * 5. Products with minStock = 0 NEVER take parts from products with minStock > 0
  *
  * @param products - List of products
  * @param parts - Parts inventory
@@ -196,22 +251,31 @@ export function allocateByRatio(
     }
   }
 
-  // Phase 2: Allocate leftover parts to products without targets
-  // Use priority order (lower priority number = higher priority)
-  const sortedNoTargets = [...productsWithoutTargets].sort(
-    (a, b) => a.priority - b.priority
-  );
+  // Phase 2: Allocate leftover parts to ALL products once targets are met or no more target builds are possible
+  // This allows products to build beyond minStock while still protecting target fulfillment.
+  
+  // First check: are there any products with targets that haven't reached their minimum?
+  const unmetTargets = productsWithTargets.filter((p) => {
+    const target = targets[p.name];
+    const built = completed.get(p.id) || 0;
+    return built < target.minStock;
+  });
 
-  for (const product of sortedNoTargets) {
-    // Build as many as possible for this product
-    while (canBuildOne(product, availableInventory)) {
-      deductPartsForOne(product, availableInventory);
-      completed.set(product.id, (completed.get(product.id) || 0) + 1);
+  // Only proceed to Phase 2 if all minStock targets are met, OR if we can't build any more minStock products anyway
+  if (unmetTargets.length === 0 || !productsWithTargets.some((p) => canBuildOne(p, availableInventory))) {
+    const sortedAllProducts = [...products].sort((a, b) => a.priority - b.priority);
 
-      // Update allocated parts tracking
-      const prodAlloc = allocatedParts.get(product.id)!;
-      for (const { partSku, quantityRequired } of product.parts) {
-        prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+    for (const product of sortedAllProducts) {
+      // Build as many as possible for this product
+      while (canBuildOne(product, availableInventory)) {
+        deductPartsForOne(product, availableInventory);
+        completed.set(product.id, (completed.get(product.id) || 0) + 1);
+
+        // Update allocated parts tracking
+        const prodAlloc = allocatedParts.get(product.id)!;
+        for (const { partSku, quantityRequired } of product.parts) {
+          prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+        }
       }
     }
   }
@@ -353,22 +417,32 @@ export function allocateByDemandRatio(
     }
   }
 
-  // Phase 2: Allocate leftover parts to products without targets
-  // Use priority order (lower priority number = higher priority)
-  const sortedNoTargets = [...productsWithoutTargets].sort(
-    (a, b) => a.priority - b.priority
-  );
+  // Phase 2: Allocate leftover parts to ALL products once total demand targets are met or no more target builds are possible
+  // This allows products to build beyond demand targets while still protecting target fulfillment.
+  
+  // First check: are there any products with targets that haven't reached their total target?
+  const unmetDemands = productsWithTargets.filter((p) => {
+    const target = targets[p.name];
+    const built = completed.get(p.id) || 0;
+    const totalTarget = target.minStock + target.expectedInstalls;
+    return built < totalTarget;
+  });
 
-  for (const product of sortedNoTargets) {
-    // Build as many as possible for this product
-    while (canBuildOne(product, availableInventory)) {
-      deductPartsForOne(product, availableInventory);
-      completed.set(product.id, (completed.get(product.id) || 0) + 1);
+  // Only proceed to Phase 2 if all targets are met, OR if we can't build any more targeted products anyway
+  if (unmetDemands.length === 0 || !productsWithTargets.some((p) => canBuildOne(p, availableInventory))) {
+    const sortedAllProducts = [...products].sort((a, b) => a.priority - b.priority);
 
-      // Update allocated parts tracking
-      const prodAlloc = allocatedParts.get(product.id)!;
-      for (const { partSku, quantityRequired } of product.parts) {
-        prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+    for (const product of sortedAllProducts) {
+      // Build as many as possible for this product
+      while (canBuildOne(product, availableInventory)) {
+        deductPartsForOne(product, availableInventory);
+        completed.set(product.id, (completed.get(product.id) || 0) + 1);
+
+        // Update allocated parts tracking
+        const prodAlloc = allocatedParts.get(product.id)!;
+        for (const { partSku, quantityRequired } of product.parts) {
+          prodAlloc[partSku] = (prodAlloc[partSku] || 0) + quantityRequired;
+        }
       }
     }
   }

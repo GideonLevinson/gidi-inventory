@@ -1,14 +1,665 @@
 [
   {
-    "id": "TXN-1770827510498-1owgqn9ld",
-    "date": "2026-02-11",
+    "id": "TXN-1771226185062-2u37l7tvo",
+    "date": "2026-01-06",
     "type": "sale",
-    "customer": "תלמי אלעזר, נמרוד",
+    "customer": "שדרות",
+    "products": [
+      {
+        "productId": "12006-טריבונה-15-מושבים",
+        "productName": "12006 טריבונה 15 מושבים",
+        "quantity": 6,
+        "parts": [
+          {
+            "partSku": "TRBN15-PPN",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226481537-lo5ofc56r",
+    "date": "2026-01-07",
+    "type": "sale",
+    "customer": "רעננה",
+    "products": [
+      {
+        "productId": "4642-b-זוג-שערי-פוטסל-קבועים-עם-אוזניים",
+        "productName": "4642/B זוג שערי פוטסל קבועים עם אוזניים",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP4642T3",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP4642PSD",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4642DIST",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642REGALT",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642REGBAS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642BULL",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "4642SETUP",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226512180-kgxwflkf7",
+    "date": "2026-01-08",
+    "type": "sale",
+    "customer": "אבן מנחם (נדלנית)",
+    "products": [
+      {
+        "productId": "זוג-שערי-5-2-קבוע-4582-ti",
+        "productName": "זוג שערי 5/2 קבוע 4582-TI",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP240PDS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBFG4580",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4581-2BULL",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST5156/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST157/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226546216-dl9x2kv4a",
+    "date": "2026-01-11",
+    "type": "sale",
+    "customer": "חיפה (דשא עוז)",
+    "products": [
+      {
+        "productId": "4642-b-ril-זוג-שערי-פוטסל-קבועים-עם-ril",
+        "productName": "4642/B+RIL  זוג שערי פוטסל קבועים עם RIL",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP4642T3",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP4642PSD",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4642REGALT",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "4642SETUP",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST3M-INT/4642",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST100/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226579263-dgtqmchfu",
+    "date": "2026-01-11",
+    "type": "sale",
+    "customer": "טמרה",
     "products": [
       {
         "productId": "שער-מטרה-db120x90",
         "productName": "שער מטרה DB120X90",
-        "quantity": 2
+        "quantity": 4,
+        "parts": [
+          {
+            "partSku": "SPV90X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "SPO70X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "REGH90-Z",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "GOM-SPV+O/Z",
+            "quantityRequired": 0.5
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226613517-ni0vrz8qn",
+    "date": "2026-01-14",
+    "type": "sale",
+    "customer": "סלאמה (מ.א משגב)",
+    "products": [
+      {
+        "productId": "4642-b-ril-זוג-שערי-פוטסל-קבועים-עם-ril",
+        "productName": "4642/B+RIL  זוג שערי פוטסל קבועים עם RIL",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP4642T3",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP4642PSD",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4642REGALT",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "4642SETUP",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST3M-INT/4642",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST100/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226646585-0wr0o5zt6",
+    "date": "2026-01-19",
+    "type": "sale",
+    "customer": "ג׳לג׳וליה (ראבי ספורט)",
+    "products": [
+      {
+        "productId": "8819-זוג-עמודי-טניס",
+        "productName": "8819 זוג עמודי טניס",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "8819PS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "8819PT",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771226684796-vhgiphdyb",
+    "date": "2026-01-20",
+    "type": "sale",
+    "customer": "כפר מנדא (אעדל)",
+    "products": [
+      {
+        "productId": "4582-4-ati-זוג-שערי-5-2-ניידים",
+        "productName": "4582/4-ATI זוג שערי 5/2 ניידים",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB160/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB200/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBRR4582/4",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBCD4580BR",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582/4SCBULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227512277-lxdcwbt67",
+    "date": "2026-01-28",
+    "type": "sale",
+    "customer": "שוהם",
+    "products": [
+      {
+        "productId": "6754",
+        "productName": "6754",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "6754",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227689729-liiwx28pf",
+    "date": "2026-01-28",
+    "type": "sale",
+    "customer": "כנות",
+    "products": [
+      {
+        "productId": "4601-p",
+        "productName": "4601/P",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "4601/P",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227760428-pexibno8n",
+    "date": "2026-01-28",
+    "type": "sale",
+    "customer": "אילת",
+    "products": [
+      {
+        "productId": "4642-זוג-שערי-פוטסל-ניידים",
+        "productName": "4642 זוג שערי פוטסל ניידים",
+        "quantity": 4,
+        "parts": [
+          {
+            "partSku": "DBSP4642T3",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP4642PSD",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4642DIST",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642REGALT",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642REGBAS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642BULL",
+            "quantityRequired": 1
+          }
+        ]
+      },
+      {
+        "productId": "שער-מטרה-db120x90",
+        "productName": "שער מטרה DB120X90",
+        "quantity": 8,
+        "parts": [
+          {
+            "partSku": "SPV90X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "SPO70X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "REGH90-Z",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "GOM-SPV+O/Z",
+            "quantityRequired": 0.5
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227786953-etnviw1b6",
+    "date": "2026-02-02",
+    "type": "sale",
+    "customer": "טכנופלנט",
+    "products": [
+      {
+        "productId": "4582-4-ati-זוג-שערי-5-2-ניידים",
+        "productName": "4582/4-ATI זוג שערי 5/2 ניידים",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB160/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB200/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBRR4582/4",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBCD4580BR",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582/4SCBULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227823796-rkmwzgsi8",
+    "date": "2026-02-05",
+    "type": "sale",
+    "customer": "ירכא",
+    "products": [
+      {
+        "productId": "4582-4-ati-זוג-שערי-5-2-ניידים",
+        "productName": "4582/4-ATI זוג שערי 5/2 ניידים",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB160/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB200/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBRR4582/4",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBCD4580BR",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582/4SCBULL",
+            "quantityRequired": 1
+          }
+        ]
+      },
+      {
+        "productId": "45803x2-4-ati-זוג-שערי-3-2-ניידים",
+        "productName": "45803x2/4-ATI  זוג שערי 3/2 ניידים",
+        "quantity": 2,
+        "parts": [
+          {
+            "partSku": "DBSP300T",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB160/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB200/4PALI",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBRR4582/4",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBCD4580BR",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582/4SCBULL",
+            "quantityRequired": 1
+          }
+        ]
+      },
+      {
+        "productId": "zav-20-שק-משקולת",
+        "productName": "ZAV/20 שק משקולת",
+        "quantity": 20,
+        "parts": [
+          {
+            "partSku": "ZAV/20",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227888312-afh9mogwa",
+    "date": "2026-02-11",
+    "type": "sale",
+    "customer": "תלמי אלעזר",
+    "products": [
+      {
+        "productId": "שער-מטרה-db120x90",
+        "productName": "שער מטרה DB120X90",
+        "quantity": 2,
+        "parts": [
+          {
+            "partSku": "SPV90X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "SPO70X120",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "REGH90-Z",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "GOM-SPV+O/Z",
+            "quantityRequired": 0.5
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771227913488-mc2syfwmt",
+    "date": "2026-02-15",
+    "type": "sale",
+    "customer": "כפר בלום",
+    "products": [
+      {
+        "productId": "4601-p",
+        "productName": "4601/P",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "4601/P",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": "משלוח NK"
+  },
+  {
+    "id": "TXN-1771227951619-zmu8zvjb1",
+    "date": "2026-02-15",
+    "type": "sale",
+    "customer": "תלמי יפה ",
+    "products": [
+      {
+        "productId": "זוג-שערי-5-2-קבוע-4582-ti",
+        "productName": "זוג שערי 5/2 קבוע 4582-TI",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP240PDS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBFG4580",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4581-2BULL",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST5156/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST157/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "notes": ""
+  },
+  {
+    "id": "TXN-1771228081066-0d87t8e7k",
+    "date": "2026-02-16",
+    "type": "sale",
+    "customer": "אשדוד",
+    "products": [
+      {
+        "productId": "4580-4-ati-זוג-שערי-7-2-ניידים",
+        "productName": "4580/4-ATI זוג שערי 7/2 ניידים",
+        "quantity": 1.5,
+        "parts": [
+          {
+            "partSku": "DB732INT",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4580/4PALI",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBRR4580/4",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DBCD4580BR",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4580/4SCBULL-A",
+            "quantityRequired": 1
+          }
+        ]
       }
     ],
     "parts": [],

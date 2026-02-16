@@ -22,8 +22,8 @@ import {
   allocateInventory,
   allocateByRatio,
   allocateByDemandRatio,
-} from './allocation';
-import { parseCsvString, validateCsvColumns } from './csvParser';
+} from './allocation.js';
+import { parseCsvString, validateCsvColumns } from './csvParser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,8 +80,8 @@ async function loadInventoryFromFile(): Promise<AppState> {
     const csvContent = await fs.readFile(INVENTORY_FILE, 'utf-8');
     const parsed = parseCsvString(csvContent);
 
-    // Load targets from a separate targets file if it exists
-    let targets = getDefaultTargets(parsed.products);
+    // Load existing targets from file FIRST
+    let targets: Record<string, ProductTarget> = {};
     const targetsFile = path.join(DATA_DIR, 'targets.json');
     if (await fsExtra.pathExists(targetsFile)) {
       try {
@@ -91,9 +91,17 @@ async function loadInventoryFromFile(): Promise<AppState> {
         console.warn('Could not load targets file, using defaults');
       }
     }
+    
+    // Only add defaults for NEW products that don't have targets yet
+    const defaults = getDefaultTargets(parsed.products);
+    for (const productName in defaults) {
+      if (!targets[productName]) {
+        targets[productName] = defaults[productName];
+      }
+    }
 
     // Calculate allocations using default method (priority-based)
-    const allocations = allocateInventory(parsed.products, parsed.parts);
+    const allocations = allocateInventory(parsed.products, parsed.parts, targets);
 
     return {
       parts: parsed.parts,
@@ -209,6 +217,47 @@ function generateTransactionId(): string {
   return `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function findProductForTransaction(state: AppState, product: TransactionProduct): Product | undefined {
+  return state.products.find(
+    (p) => p.id === product.productId || p.name === product.productName
+  );
+}
+
+function resolveTransactionProductParts(
+  product: TransactionProduct,
+  state: AppState,
+  fallbackParts?: ProductPart[]
+): ProductPart[] | null {
+  if (product.parts && product.parts.length > 0) {
+    return product.parts;
+  }
+
+  const prod = findProductForTransaction(state, product);
+  if (prod?.parts?.length) {
+    return prod.parts;
+  }
+
+  if (fallbackParts && fallbackParts.length > 0) {
+    return fallbackParts;
+  }
+
+  return null;
+}
+
+function applyProductPartsDelta(
+  state: AppState,
+  parts: ProductPart[],
+  quantity: number,
+  direction: 1 | -1
+): void {
+  for (const part of parts) {
+    const partState = state.parts[part.partSku];
+    if (partState) {
+      partState.currentInventory += direction * part.quantityRequired * quantity;
+    }
+  }
+}
+
 // ============================================================================
 // API ENDPOINTS
 // ============================================================================
@@ -278,7 +327,7 @@ app.post('/api/inventory', express.json(), async (req, res) => {
         recalculatedAllocations = allocateByDemandRatio(updatedProducts, updatedParts, targets);
       }
     } else {
-      recalculatedAllocations = allocateInventory(updatedProducts, updatedParts);
+      recalculatedAllocations = allocateInventory(updatedProducts, updatedParts, targets);
     }
 
     const newState: AppState = {
@@ -321,12 +370,24 @@ app.post('/api/inventory/upload', express.text({ type: 'text/csv' }), async (req
       });
     }
 
-    // Initialize targets for new products
-    const targets = getDefaultTargets(parsed.products);
+    // Initialize targets for new products (preserve ALL existing values)
+    const existingTargets = await loadTargets();
+    const targets = { ...existingTargets };
+    
+    // Only add targets for NEW products that don't exist yet
+    for (const product of parsed.products) {
+      if (!targets[product.name]) {
+        targets[product.name] = {
+          productName: product.name,
+          minStock: 0,
+          expectedInstalls: 0,
+        };
+      }
+    }
     await saveTargets(targets);
 
     // Calculate allocations
-    const allocations = allocateInventory(parsed.products, parsed.parts);
+    const allocations = allocateInventory(parsed.products, parsed.parts, targets);
 
     // Save to file
     const newState: AppState = {
@@ -399,7 +460,7 @@ app.post('/api/allocation-method', express.json(), async (req, res) => {
     } else if (method === 'demandRatio') {
       allocations = allocateByDemandRatio(state.products, state.parts, targets);
     } else {
-      allocations = allocateInventory(state.products, state.parts);
+      allocations = allocateInventory(state.products, state.parts, targets);
     }
 
     state.allocations = allocations;
@@ -460,15 +521,18 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
     // Load current state
     const state = await loadInventoryFromFile();
 
+    const normalizedProducts = (products || []).map((product: TransactionProduct) => {
+      const partsSnapshot = resolveTransactionProductParts(product, state);
+      return {
+        ...product,
+        parts: partsSnapshot || product.parts || [],
+      };
+    });
+
     // Process products (deduct their parts from inventory)
-    for (const product of products || []) {
-      const prod = state.products.find(p => p.id === product.productId);
-      if (prod) {
-        for (const part of prod.parts) {
-          if (state.parts[part.partSku]) {
-            state.parts[part.partSku].currentInventory -= part.quantityRequired * product.quantity;
-          }
-        }
+    for (const product of normalizedProducts) {
+      if (product.parts && product.parts.length > 0) {
+        applyProductPartsDelta(state, product.parts, product.quantity, -1);
       }
     }
 
@@ -480,7 +544,8 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
     }
 
     // Recalculate allocations
-    state.allocations = allocateInventory(state.products, state.parts);
+    const targets = await loadTargets();
+    state.allocations = allocateInventory(state.products, state.parts, targets);
 
     // Save updated inventory
     await saveInventoryToFile(state);
@@ -491,7 +556,7 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
       date,
       type: 'sale',
       customer,
-      products: products || [],
+      products: normalizedProducts,
       parts: parts || [],
       notes,
     };
@@ -524,15 +589,18 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
     // Load current state
     const state = await loadInventoryFromFile();
 
+    const normalizedProducts = (products || []).map((product: TransactionProduct) => {
+      const partsSnapshot = resolveTransactionProductParts(product, state);
+      return {
+        ...product,
+        parts: partsSnapshot || product.parts || [],
+      };
+    });
+
     // Process products (add their parts to inventory)
-    for (const product of products || []) {
-      const prod = state.products.find(p => p.id === product.productId);
-      if (prod) {
-        for (const part of prod.parts) {
-          if (state.parts[part.partSku]) {
-            state.parts[part.partSku].currentInventory += part.quantityRequired * product.quantity;
-          }
-        }
+    for (const product of normalizedProducts) {
+      if (product.parts && product.parts.length > 0) {
+        applyProductPartsDelta(state, product.parts, product.quantity, 1);
       }
     }
 
@@ -544,7 +612,8 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
     }
 
     // Recalculate allocations
-    state.allocations = allocateInventory(state.products, state.parts);
+    const targets = await loadTargets();
+    state.allocations = allocateInventory(state.products, state.parts, targets);
 
     // Save updated inventory
     await saveInventoryToFile(state);
@@ -556,7 +625,7 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
       type: 'shipment',
       supplier,
       poNumber,
-      products: products || [],
+      products: normalizedProducts,
       parts: parts || [],
       notes,
     };
@@ -568,6 +637,104 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
     res.json({ success: true, transaction, state });
   } catch (error) {
     console.error('Error recording shipment:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+/**
+ * PUT /api/transactions/:id
+ * Edit an existing transaction (recalculate inventory)
+ */
+app.put('/api/transactions/:id', express.json(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, customer, supplier, poNumber, products, parts, notes } = req.body;
+
+    const transactions = await loadTransactions();
+    const txnIndex = transactions.findIndex((t) => t.id === id);
+
+    if (txnIndex === -1) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const oldTxn = transactions[txnIndex];
+    const newProducts = products || oldTxn.products || [];
+    const newParts = parts || oldTxn.parts || [];
+
+    const state = await loadInventoryFromFile();
+
+    const normalizedOldProducts = (oldTxn.products || []).map((product) => {
+      const partsSnapshot = resolveTransactionProductParts(product, state);
+      return {
+        ...product,
+        parts: partsSnapshot || product.parts || [],
+      };
+    });
+
+    const oldPartsById = new Map(
+      normalizedOldProducts.map((product) => [product.productId, product.parts || []])
+    );
+    const oldPartsByName = new Map(
+      normalizedOldProducts.map((product) => [product.productName, product.parts || []])
+    );
+
+    const normalizedNewProducts = newProducts.map((product: TransactionProduct) => {
+      const fallbackParts =
+        oldPartsById.get(product.productId) || oldPartsByName.get(product.productName);
+      const partsSnapshot = resolveTransactionProductParts(product, state, fallbackParts);
+      return {
+        ...product,
+        parts: partsSnapshot || product.parts || [],
+      };
+    });
+
+    // Undo old transaction
+    const undoDirection = oldTxn.type === 'sale' ? 1 : -1;
+    for (const product of normalizedOldProducts) {
+      if (product.parts && product.parts.length > 0) {
+        applyProductPartsDelta(state, product.parts, product.quantity, undoDirection);
+      }
+    }
+    for (const part of oldTxn.parts || []) {
+      if (state.parts[part.partSku]) {
+        state.parts[part.partSku].currentInventory += undoDirection * part.quantity;
+      }
+    }
+
+    // Apply new transaction
+    const applyDirection = oldTxn.type === 'sale' ? -1 : 1;
+    for (const product of normalizedNewProducts) {
+      if (product.parts && product.parts.length > 0) {
+        applyProductPartsDelta(state, product.parts, product.quantity, applyDirection);
+      }
+    }
+    for (const part of newParts) {
+      if (state.parts[part.partSku]) {
+        state.parts[part.partSku].currentInventory += applyDirection * part.quantity;
+      }
+    }
+
+    state.allocations = allocateInventory(state.products, state.parts, state.targets);
+    await saveInventoryToFile(state);
+
+    const updatedTxn: Transaction = {
+      ...oldTxn,
+      date: date || oldTxn.date,
+      customer: customer ?? oldTxn.customer,
+      supplier: supplier ?? oldTxn.supplier,
+      poNumber: poNumber ?? oldTxn.poNumber,
+      products: normalizedNewProducts,
+      parts: newParts,
+      notes: notes ?? oldTxn.notes,
+    };
+
+    transactions[txnIndex] = updatedTxn;
+    await saveTransactions(transactions);
+
+    res.json({ success: true, transaction: updatedTxn, state });
+  } catch (error) {
+    console.error('Error editing transaction:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: errorMessage });
   }

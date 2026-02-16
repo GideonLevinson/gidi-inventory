@@ -77,6 +77,7 @@ export interface TransactionProduct {
   productId: string;
   productName: string;
   quantity: number;
+  parts?: ProductPart[]; // Snapshot of product BOM at transaction time
 }
 
 // Transaction item - part in a transaction

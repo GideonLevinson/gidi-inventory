@@ -43,6 +43,7 @@ export interface AppState {
   parts: Record<string, Part>;      // sku -> Part
   products: Product[];              // Ordered by priority
   allocations: AllocationResult[];  // Calculated allocations
+  targets: Record<string, ProductTarget>; // Product targets (minStock, expectedInstalls)
   lastImportDate: string | null;
   selectedProductId: string | null;
 }
@@ -109,6 +110,7 @@ export interface TransactionProduct {
   productId: string;
   productName: string;
   quantity: number;
+  parts?: ProductPart[]; // Snapshot of product BOM at transaction time
 }
 
 export interface TransactionPart {

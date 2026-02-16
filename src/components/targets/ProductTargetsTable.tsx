@@ -128,7 +128,10 @@ export function ProductTargetsTable() {
                   {/* Editable minStock cell */}
                   <td
                     className="py-2 px-3 text-center cursor-pointer hover:bg-blue-50"
-                    onClick={() => handleCellClick(product.name, 'minStock')}
+                    onClick={() => {
+                      if (editingCell?.productName === product.name && editingCell?.field === 'minStock') return;
+                      handleCellClick(product.name, 'minStock');
+                    }}
                   >
                     {editingCell?.productName === product.name && editingCell?.field === 'minStock' ? (
                       <input
@@ -138,6 +141,7 @@ export function ProductTargetsTable() {
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={handleCellBlur}
                         onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()}
                         autoFocus
                         className="w-20 px-2 py-1 text-center border border-blue-500 rounded focus:ring-2 focus:ring-blue-500"
                       />
@@ -151,7 +155,10 @@ export function ProductTargetsTable() {
                   {/* Editable expectedInstalls cell */}
                   <td
                     className="py-2 px-3 text-center cursor-pointer hover:bg-blue-50"
-                    onClick={() => handleCellClick(product.name, 'expectedInstalls')}
+                    onClick={() => {
+                      if (editingCell?.productName === product.name && editingCell?.field === 'expectedInstalls') return;
+                      handleCellClick(product.name, 'expectedInstalls');
+                    }}
                   >
                     {editingCell?.productName === product.name && editingCell?.field === 'expectedInstalls' ? (
                       <input
@@ -161,6 +168,7 @@ export function ProductTargetsTable() {
                         onChange={(e) => setEditValue(e.target.value)}
                         onBlur={handleCellBlur}
                         onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()}
                         autoFocus
                         className="w-20 px-2 py-1 text-center border border-blue-500 rounded focus:ring-2 focus:ring-blue-500"
                       />

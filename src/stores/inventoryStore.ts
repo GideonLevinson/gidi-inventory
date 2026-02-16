@@ -29,6 +29,7 @@ interface InventoryState {
   resetTargetsToDefaults: () => Promise<void>;
   recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
   recordShipment: (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
+  editTransaction: (id: string, payload: { date?: string; customer?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string }) => Promise<void>;
   loadTransactions: () => Promise<void>;
 }
 
@@ -296,6 +297,35 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to record shipment',
+      });
+    }
+  },
+
+  // Edit an existing transaction
+  editTransaction: async (id: string, payload) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to edit transaction');
+      }
+
+      const data = await response.json();
+
+      set({
+        parts: data.state.parts,
+        allocations: data.state.allocations,
+      });
+
+      await get().loadTransactions();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to edit transaction',
       });
     }
   },
