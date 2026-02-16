@@ -369,7 +369,7 @@ export function TransactionsView() {
               <select
                 value={saleProductSelect}
                 onChange={(e) => setSaleProductSelect(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Product...</option>
                 {products.map(p => (
@@ -416,7 +416,7 @@ export function TransactionsView() {
               <select
                 value={salePartSelect}
                 onChange={(e) => setSalePartSelect(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Part...</option>
                 {Object.values(parts).map(p => (
@@ -572,7 +572,7 @@ export function TransactionsView() {
               <select
                 value={shipmentProductSelect}
                 onChange={(e) => setShipmentProductSelect(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Product...</option>
                 {products.map(p => (
@@ -619,7 +619,7 @@ export function TransactionsView() {
               <select
                 value={shipmentPartSelect}
                 onChange={(e) => setShipmentPartSelect(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Part...</option>
                 {Object.values(parts).map(p => (
@@ -918,7 +918,7 @@ export function TransactionsView() {
                 <select
                   value={editProductSelect}
                   onChange={(e) => setEditProductSelect(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Product...</option>
                   {products.map((p) => (
@@ -964,7 +964,7 @@ export function TransactionsView() {
                 <select
                   value={editPartSelect}
                   onChange={(e) => setEditPartSelect(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Part...</option>
                   {Object.values(parts).map((p) => (
