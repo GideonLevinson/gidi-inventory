@@ -79,7 +79,7 @@ export function formatPackingListForWhatsApp(
 
   // Products
   if (transaction.products && transaction.products.length > 0) {
-    lines.push('*התקנה*');
+    lines.push('*התקנה:*');
     for (const product of transaction.products) {
       lines.push(`• ${product.productName} × ${product.quantity}`);
     }
