@@ -100,8 +100,8 @@ async function loadInventoryFromFile(): Promise<AppState> {
       }
     }
 
-    // Calculate allocations using default method (priority-based)
-    const allocations = allocateInventory(parsed.products, parsed.parts, targets);
+    // Calculate allocations using the saved allocation method
+    const allocations = await calculateAllocations(parsed.products, parsed.parts, targets);
 
     return {
       parts: parsed.parts,
@@ -145,6 +145,57 @@ async function saveInventoryToFile(state: AppState): Promise<void> {
   } catch (error) {
     console.error('Error saving inventory:', error);
     throw error;
+  }
+}
+
+/**
+ * Load or initialize settings (allocation method, etc.)
+ */
+async function loadSettings(): Promise<{ allocationMethod: 'priority' | 'ratio' | 'demandRatio' }> {
+  try {
+    const settingsFile = path.join(DATA_DIR, 'settings.json');
+    if (await fsExtra.pathExists(settingsFile)) {
+      const jsonContent = await fs.readFile(settingsFile, 'utf-8');
+      return JSON.parse(jsonContent);
+    }
+    return { allocationMethod: 'demandRatio' }; // Default
+  } catch (error) {
+    console.warn('Error loading settings:', error);
+    return { allocationMethod: 'demandRatio' };
+  }
+}
+
+/**
+ * Save settings to file
+ */
+async function saveSettings(settings: { allocationMethod: 'priority' | 'ratio' | 'demandRatio' }): Promise<void> {
+  try {
+    const settingsFile = path.join(DATA_DIR, 'settings.json');
+    const jsonContent = JSON.stringify(settings, null, 2);
+    await fs.writeFile(settingsFile, jsonContent, 'utf-8');
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    throw error;
+  }
+}
+
+/**
+ * Calculate allocations using the current allocation method from settings
+ */
+async function calculateAllocations(
+  products: Product[],
+  parts: Record<string, Part>,
+  targets: Record<string, ProductTarget>
+): Promise<AllocationResult[]> {
+  const settings = await loadSettings();
+  const method = settings.allocationMethod || 'demandRatio';
+
+  if (method === 'ratio') {
+    return allocateByRatio(products, parts, targets);
+  } else if (method === 'demandRatio') {
+    return allocateByDemandRatio(products, parts, targets);
+  } else {
+    return allocateInventory(products, parts, targets);
   }
 }
 
@@ -318,6 +369,12 @@ app.post('/api/inventory', express.json(), async (req, res) => {
 
     // Recalculate allocations with the chosen method
     const method = allocationMethod || 'priority';
+    
+    // Save the allocation method if provided
+    if (allocationMethod) {
+      await saveSettings({ allocationMethod });
+    }
+    
     let recalculatedAllocations: AllocationResult[] = [];
 
     if (method === 'ratio' || method === 'demandRatio') {
@@ -386,8 +443,8 @@ app.post('/api/inventory/upload', express.text({ type: 'text/csv' }), async (req
     }
     await saveTargets(targets);
 
-    // Calculate allocations
-    const allocations = allocateInventory(parsed.products, parsed.parts, targets);
+    // Calculate allocations using the saved allocation method
+    const allocations = await calculateAllocations(parsed.products, parsed.parts, targets);
 
     // Save to file
     const newState: AppState = {
@@ -450,6 +507,9 @@ app.post('/api/allocation-method', express.json(), async (req, res) => {
     if (!['priority', 'ratio', 'demandRatio'].includes(method)) {
       return res.status(400).json({ error: 'Invalid allocation method' });
     }
+
+    // Save the allocation method to settings
+    await saveSettings({ allocationMethod: method });
 
     const state = await loadInventoryFromFile();
     const targets = await loadTargets();
@@ -549,7 +609,7 @@ app.post('/api/transactions/sale', express.json(), async (req, res) => {
 
       // Recalculate allocations
       const targets = await loadTargets();
-      state.allocations = allocateInventory(state.products, state.parts, targets);
+      state.allocations = await calculateAllocations(state.products, state.parts, targets);
 
       // Save updated inventory
       await saveInventoryToFile(state);
@@ -621,7 +681,7 @@ app.post('/api/transactions/shipment', express.json(), async (req, res) => {
 
     // Recalculate allocations
     const targets = await loadTargets();
-    state.allocations = allocateInventory(state.products, state.parts, targets);
+    state.allocations = await calculateAllocations(state.products, state.parts, targets);
 
     // Save updated inventory
     await saveInventoryToFile(state);
@@ -732,7 +792,7 @@ app.put('/api/transactions/:id', express.json(), async (req, res) => {
       }
     }
 
-    state.allocations = allocateInventory(state.products, state.parts, state.targets);
+    state.allocations = await calculateAllocations(state.products, state.parts, state.targets);
     await saveInventoryToFile(state);
 
     const updatedTxn: Transaction = {

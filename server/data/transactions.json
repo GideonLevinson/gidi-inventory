@@ -669,29 +669,25 @@
     "id": "TXN-1771268939149-z53bqdn02",
     "date": "2026-02-19",
     "type": "sale",
-    "status": "planned",
+    "status": "completed",
     "customer": "קובי- מושיקו",
     "location": "יהוד",
     "products": [
       {
-        "productId": "4642-b-ril-זוג-שערי-פוטסל-קבועים-עם-ril",
-        "productName": "4642/B+RIL  זוג שערי פוטסל קבועים עם RIL",
+        "productId": "7801-b-זוג-שערי-3-2-קבועים-פרופיל-מרובע-עם-ril",
+        "productName": "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL",
         "quantity": 1,
         "parts": [
           {
-            "partSku": "DBSP4642T3",
+            "partSku": "DB7801T",
             "quantityRequired": 1
           },
           {
-            "partSku": "DBSP4642PSD",
+            "partSku": "DB7801P",
             "quantityRequired": 2
           },
           {
-            "partSku": "DB4642REGALT",
-            "quantityRequired": 1
-          },
-          {
-            "partSku": "4642SETUP",
+            "partSku": "DB7801BULL",
             "quantityRequired": 1
           },
           {
@@ -710,7 +706,55 @@
       }
     ],
     "parts": [],
-    "materials": "טרקטור+בורג+טפל׳ה\nמריצה\nברזנט\nאת חפירה+כף\nג׳ריקנים\n3 מלט\n8 חול\n12 חצץ\nחומר שחור\nדבק\nגליל נייר הדבקה\nמטאטא",
-    "notes": "יציאה בשעה 4:45\nלשלוח עדכון כשמגיעים\nבסיום- תמונות טובות לפני שיוצאים חזרה\nלעדכן צפי הגעה למחסן"
+    "materials": "זוג רשתות 158\nטרקטור+בורג+טפל׳ה\nמריצה\nברזנט\nאת חפירה+כף\nג׳ריקנים\n3 מלט\n8 חול\n12 חצץ\nחומר שחור\nדבק\nגליל נייר הדבקה\nמטאטא",
+    "notes": "שימוש בתפסני רשת גמה פתוח\nיציאה בשעה 4:45\nלשלוח עדכון כשמגיעים\nבסיום- תמונות טובות לפני שיוצאים חזרה\nלעדכן צפי הגעה למחסן"
+  },
+  {
+    "id": "TXN-1771692106973-qnfu8jnyp",
+    "date": "2026-02-21",
+    "type": "sale",
+    "status": "planned",
+    "customer": "מחפרון העמקים",
+    "location": "דבורה",
+    "products": [
+      {
+        "productId": "זוג-שערי-5-2-קבוע-4582-ti",
+        "productName": "זוג שערי 5/2 קבוע 4582-TI",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP500T",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP240PDS",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBFG4580",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4581-2BULL",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST5156/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST157/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4582RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "materials": "חומר לבטון- להעמיס בבוקר\nחומר שחור, גליל נייר, דבק- מועמס\nטרקטור, בורג, טפל׳ה\nמריצה, ג׳ריקנים, אתי חפירה (קניתי עוד אחד, יש 2)",
+    "notes": ""
   }
 ]

@@ -128,5 +128,10 @@
     "productName": "45804x2/4-ATI  זוג שערי 4/2 ניידים",
     "minStock": 0,
     "expectedInstalls": 0
+  },
+  "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL": {
+    "productName": "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL",
+    "minStock": 2,
+    "expectedInstalls": 0
   }
 }
