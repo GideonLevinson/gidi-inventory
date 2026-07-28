@@ -105,6 +105,35 @@ export interface ProductTarget {
   expectedInstalls: number; // צפי התקנות
 }
 
+// Expected shipment / receiving workflow
+export type ReceivingLineStatus = 'pending' | 'partial' | 'received' | 'cancelled';
+export type ReceivingShipmentStatus = 'pending' | 'partial' | 'received' | 'cancelled';
+
+export interface ReceivingLine {
+  id: string;
+  itemType: 'product' | 'part';
+  itemId: string;           // product.id for products, sku for parts
+  itemName: string;         // product.name or part.description
+  itemSku?: string;         // part.sku when itemType is part
+  productId?: string;       // product.id when itemType is product
+  orderedQty: number;
+  acceptedQty: number;
+  status: ReceivingLineStatus;
+  notes?: string;
+}
+
+export interface ReceivingShipment {
+  id: string;
+  supplier: string;
+  expectedDate: string;
+  receivedDate?: string;
+  status: ReceivingShipmentStatus;
+  notes?: string;
+  lines: ReceivingLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Transaction types
 export interface TransactionProduct {
   productId: string;

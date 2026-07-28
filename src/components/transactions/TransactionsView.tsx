@@ -757,7 +757,13 @@ export function TransactionsView() {
               <tbody>
                 {sortedTransactions.map((txn) => (
                   <tr key={txn.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2">{new Date(txn.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">
+                      {new Date(txn.date).toLocaleDateString('he-IL', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex flex-col gap-1">
                         <span className={`px-3 py-1 rounded-full text-white text-xs font-semibold inline-block ${

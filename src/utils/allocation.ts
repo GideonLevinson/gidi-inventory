@@ -48,10 +48,12 @@ export function allocateInventory(
     if (maxBuildable === Infinity) maxBuildable = 0;
 
     // Step 2: Allocate parts (consume from available inventory)
+    // Allocate up to maxBuildable to ensure the product gets allocated if it CAN build something
     const allocatedParts: Record<string, number> = {};
+    const quantityToAllocate = maxBuildable; // Allocate everything this product can build
 
     for (const { partSku, quantityRequired } of product.parts) {
-      const allocated = maxBuildable * quantityRequired;
+      const allocated = quantityToAllocate * quantityRequired;
       allocatedParts[partSku] = allocated;
 
       // Deduct from available inventory
@@ -102,6 +104,38 @@ function deductPartsForOne(
 }
 
 /**
+ * Calculate the theoretical maximum number of units that can be built for a product
+ * based on current available inventory (without considering allocation limits)
+ */
+function calculateTheoreticalMaxBuildable(
+  product: Product,
+  availableInventory: Map<string, number>
+): { maxBuildable: number; bottleneckParts: string[] } {
+  let maxBuildable = Infinity;
+  const bottleneckParts: string[] = [];
+
+  for (const { partSku, quantityRequired } of product.parts) {
+    if (quantityRequired <= 0) continue;
+
+    const available = availableInventory.get(partSku) || 0;
+    const canBuild = Math.floor(available / quantityRequired);
+
+    if (canBuild < maxBuildable) {
+      maxBuildable = canBuild;
+      bottleneckParts.length = 0; // Reset bottlenecks
+      bottleneckParts.push(partSku);
+    } else if (canBuild === maxBuildable && canBuild < Infinity) {
+      bottleneckParts.push(partSku);
+    }
+  }
+
+  // Handle edge case: product with no parts
+  if (maxBuildable === Infinity) maxBuildable = 0;
+
+  return { maxBuildable, bottleneckParts };
+}
+
+/**
  * Ratio-based allocation algorithm
  * Allocates parts to achieve balanced ratios relative to target minimums
  *
@@ -126,6 +160,9 @@ export function allocateByRatio(
   Object.values(parts).forEach((part) => {
     availableInventory.set(part.sku, part.currentInventory);
   });
+
+  // Keep a snapshot of original inventory for theoretical capacity calculations
+  const originalInventory = new Map(availableInventory);
 
   // Track completed units per product
   const completed = new Map<string, number>();
@@ -220,33 +257,17 @@ export function allocateByRatio(
   const results: AllocationResult[] = [];
 
   for (const product of products) {
-    const maxBuildable = completed.get(product.id) || 0;
     const prodAlloc = allocatedParts.get(product.id) || {};
 
-    // Calculate bottleneck parts (parts that limit further production)
-    const bottleneckParts: string[] = [];
-    let minMoreCanBuild = Infinity;
-
-    for (const { partSku, quantityRequired } of product.parts) {
-      if (quantityRequired <= 0) continue;
-      const available = availableInventory.get(partSku) || 0;
-      const canBuildMore = Math.floor(available / quantityRequired);
-
-      if (canBuildMore < minMoreCanBuild) {
-        minMoreCanBuild = canBuildMore;
-        bottleneckParts.length = 0;
-        bottleneckParts.push(partSku);
-      } else if (canBuildMore === minMoreCanBuild && canBuildMore < Infinity) {
-        bottleneckParts.push(partSku);
-      }
-    }
+    // Calculate theoretical maximum buildable (based on original inventory)
+    const { maxBuildable, bottleneckParts } = calculateTheoreticalMaxBuildable(product, originalInventory);
 
     results.push({
       productId: product.id,
       productName: product.name,
-      maxBuildable,
+      maxBuildable,  // Theoretical maximum based on parts availability
       allocatedParts: prodAlloc,
-      bottleneckParts: minMoreCanBuild === 0 ? bottleneckParts : [],
+      bottleneckParts,
     });
   }
 
@@ -278,6 +299,9 @@ export function allocateByDemandRatio(
   Object.values(parts).forEach((part) => {
     availableInventory.set(part.sku, part.currentInventory);
   });
+
+  // Keep a snapshot of original inventory for theoretical capacity calculations
+  const originalInventory = new Map(availableInventory);
 
   // Track completed units per product
   const completed = new Map<string, number>();
@@ -377,33 +401,17 @@ export function allocateByDemandRatio(
   const results: AllocationResult[] = [];
 
   for (const product of products) {
-    const maxBuildable = completed.get(product.id) || 0;
     const prodAlloc = allocatedParts.get(product.id) || {};
 
-    // Calculate bottleneck parts (parts that limit further production)
-    const bottleneckParts: string[] = [];
-    let minMoreCanBuild = Infinity;
-
-    for (const { partSku, quantityRequired } of product.parts) {
-      if (quantityRequired <= 0) continue;
-      const available = availableInventory.get(partSku) || 0;
-      const canBuildMore = Math.floor(available / quantityRequired);
-
-      if (canBuildMore < minMoreCanBuild) {
-        minMoreCanBuild = canBuildMore;
-        bottleneckParts.length = 0;
-        bottleneckParts.push(partSku);
-      } else if (canBuildMore === minMoreCanBuild && canBuildMore < Infinity) {
-        bottleneckParts.push(partSku);
-      }
-    }
+    // Calculate theoretical maximum buildable (based on original inventory)
+    const { maxBuildable, bottleneckParts } = calculateTheoreticalMaxBuildable(product, originalInventory);
 
     results.push({
       productId: product.id,
       productName: product.name,
-      maxBuildable,
+      maxBuildable,  // Theoretical maximum based on parts availability
       allocatedParts: prodAlloc,
-      bottleneckParts: minMoreCanBuild === 0 ? bottleneckParts : [],
+      bottleneckParts,
     });
   }
 

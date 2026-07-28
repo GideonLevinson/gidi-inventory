@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Part, Product, AllocationResult, ProductTarget, Transaction, TransactionProduct, TransactionPart } from '../types';
+import type { Part, Product, AllocationResult, ProductTarget, Transaction, TransactionProduct, TransactionPart, ReceivingShipment } from '../types';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -10,9 +10,11 @@ interface InventoryState {
   allocations: AllocationResult[];
   targets: Record<string, ProductTarget>;
   transactions: Transaction[];
+  receivingShipments: ReceivingShipment[];
   lastImportDate: string | null;
   selectedProductId: string | null;
   allocationMethod: 'priority' | 'ratio' | 'demandRatio';  // Allocation strategy to use
+  orderingMode: 'parts' | 'productsOnly';  // Purchase order mode
 
   // UI State
   isLoading: boolean;
@@ -26,12 +28,18 @@ interface InventoryState {
   clearError: () => void;
   setProductTarget: (productName: string, minStock: number, expectedInstalls: number) => Promise<void>;
   setAllocationMethod: (method: 'priority' | 'ratio' | 'demandRatio') => Promise<void>;
+  setOrderingMode: (mode: 'parts' | 'productsOnly') => void;
   resetTargetsToDefaults: () => Promise<void>;
   recordSale: (date: string, customer: string, products: TransactionProduct[], parts: TransactionPart[], notes?: string, status?: 'planned' | 'completed', materials?: string, location?: string) => Promise<void>;
   recordShipment: (date: string, supplier: string | undefined, poNumber: string | undefined, products: TransactionProduct[], parts: TransactionPart[], notes?: string) => Promise<void>;
   editTransaction: (id: string, payload: { date?: string; customer?: string; location?: string; supplier?: string; poNumber?: string; products?: TransactionProduct[]; parts?: TransactionPart[]; notes?: string; status?: 'planned' | 'completed'; materials?: string }) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   loadTransactions: () => Promise<void>;
+  loadReceivingShipments: () => Promise<void>;
+  createReceivingShipment: (supplier: string, expectedDate: string, notes?: string) => Promise<void>;
+  addReceivingLine: (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; notes?: string }) => Promise<void>;
+  updateReceivingLine: (shipmentId: string, lineId: string, payload: { orderedQty?: number; acceptedQty?: number; notes?: string; status?: 'pending' | 'partial' | 'received' | 'cancelled' }) => Promise<void>;
+  receiveShipment: (shipmentId: string) => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
@@ -41,9 +49,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   allocations: [],
   targets: {},
   transactions: [],
+  receivingShipments: [],
   lastImportDate: null,
   selectedProductId: null,
   allocationMethod: 'demandRatio',  // Default to demand-ratio allocation
+  orderingMode: 'productsOnly',  // Default to products-only mode
   isLoading: false,
   error: null,
 
@@ -206,6 +216,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     }
   },
 
+  // Change ordering mode
+  setOrderingMode: (mode: 'parts' | 'productsOnly') => {
+    set({ orderingMode: mode });
+  },
+
   // Reset all targets to defaults (0, 0)
   resetTargetsToDefaults: async () => {
     try {
@@ -366,6 +381,84 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to load transactions',
       });
+    }
+  },
+
+  loadReceivingShipments: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving`);
+      if (!response.ok) {
+        throw new Error('Failed to load receiving shipments');
+      }
+      const receivingShipments = await response.json();
+      set({ receivingShipments });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to load receiving shipments',
+      });
+    }
+  },
+
+  createReceivingShipment: async (supplier: string, expectedDate: string, notes?: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplier, expectedDate, notes }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to create receiving shipment');
+      }
+      await get().loadReceivingShipments();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to create receiving shipment' });
+    }
+  },
+
+  addReceivingLine: async (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; notes?: string }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving/${shipmentId}/lines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(line),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add receiving line');
+      }
+      await get().loadReceivingShipments();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to add receiving line' });
+    }
+  },
+
+  updateReceivingLine: async (shipmentId: string, lineId: string, payload: { orderedQty?: number; acceptedQty?: number; notes?: string; status?: 'pending' | 'partial' | 'received' | 'cancelled' }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving/${shipmentId}/lines/${lineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update receiving line');
+      }
+      await get().loadReceivingShipments();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to update receiving line' });
+    }
+  },
+
+  receiveShipment: async (shipmentId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving/${shipmentId}/receive`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to receive shipment');
+      }
+      await get().loadReceivingShipments();
+      await get().loadInventory();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to receive shipment' });
     }
   },
 }));

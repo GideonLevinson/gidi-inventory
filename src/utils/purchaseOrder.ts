@@ -177,25 +177,33 @@ export function calculatePurchaseOrder(
   products: Product[],
   parts: Record<string, Part>,
   allocations: AllocationResult[],
-  targets: Record<string, ProductTarget>
+  targets: Record<string, ProductTarget>,
+  orderingMode: 'parts' | 'productsOnly' = 'parts'
 ): PurchaseOrder {
   // === PHASE 1: Calculate rescue order for orphans (LIMITED by target) ===
-  const rescueOrder = calculateRescueOrder(products, parts, allocations, targets);
+  // Skip orphan rescue in products-only mode
+  const rescueOrder = orderingMode === 'parts' 
+    ? calculateRescueOrder(products, parts, allocations, targets)
+    : { items: [], unlockedProducts: [], excessParts: [] };
 
   // Create allocation lookup
   const allocationByProductId = new Map<string, AllocationResult>();
   allocations.forEach((a) => allocationByProductId.set(a.productId, a));
 
-  // Calculate how many units each product can build after rescue
+  // Calculate how many units each product can build after rescue (or current if products-only mode)
   const buildableAfterRescue = new Map<string, number>();
   for (const product of products) {
     const allocation = allocationByProductId.get(product.id);
     const currentBuildable = allocation?.maxBuildable || 0;
 
-    const unlocked = rescueOrder.unlockedProducts.find(u => u.productName === product.name);
-    const additionalFromRescue = unlocked?.additionalUnits || 0;
-
-    buildableAfterRescue.set(product.id, currentBuildable + additionalFromRescue);
+    if (orderingMode === 'parts') {
+      const unlocked = rescueOrder.unlockedProducts.find(u => u.productName === product.name);
+      const additionalFromRescue = unlocked?.additionalUnits || 0;
+      buildableAfterRescue.set(product.id, currentBuildable + additionalFromRescue);
+    } else {
+      // In products-only mode, no rescue, so use current buildable
+      buildableAfterRescue.set(product.id, currentBuildable);
+    }
   }
 
   // === PHASE 2: Calculate what's needed to reach targets (after rescue) ===

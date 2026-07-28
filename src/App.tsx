@@ -9,8 +9,9 @@ import { PartsTable } from './components/inventory/PartsTable';
 import { ProductTargetsTable } from './components/targets/ProductTargetsTable';
 import { PurchaseOrderView } from './components/orders/PurchaseOrderView';
 import { TransactionsView } from './components/transactions/TransactionsView';
+import { ReceivingView } from './components/receiving/ReceivingView';
 
-type Tab = 'dashboard' | 'inventory' | 'targets' | 'orders' | 'transactions';
+type Tab = 'dashboard' | 'inventory' | 'targets' | 'orders' | 'transactions' | 'receiving';
 
 function App() {
   const { loadInventory, error, clearError, products } = useInventoryStore();
@@ -100,6 +101,16 @@ function App() {
                 הזמנת חלקים
               </button>
               <button
+                onClick={() => setActiveTab('receiving')}
+                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'receiving'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                משלוחים צפויים
+              </button>
+              <button
                 onClick={() => setActiveTab('transactions')}
                 className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'transactions'
@@ -166,6 +177,9 @@ function App() {
         ) : activeTab === 'orders' ? (
           // Purchase order view
           <PurchaseOrderView />
+        ) : activeTab === 'receiving' ? (
+          // Receiving view
+          <ReceivingView />
         ) : (
           // Transactions view
           <TransactionsView />

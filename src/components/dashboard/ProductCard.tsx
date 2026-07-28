@@ -30,32 +30,78 @@ export function ProductCard({ product, allocation, target, isSelected, onClick }
   const expectedInstalls = target?.expectedInstalls ?? 0;
   const totalNeeded = minStock + expectedInstalls;
   const hasTarget = totalNeeded > 0;
+  
+  // Check if product was actually allocated parts
+  const hasAllocation = allocation?.allocatedParts && Object.values(allocation.allocatedParts).some(v => v > 0);
+  
+  // Calculate actual allocated quantity (minimum across all required parts for this product)
+  // This represents how many complete units were allocated
+  const allocatedQuantity = hasAllocation && product.parts.length > 0
+    ? Math.min(...product.parts
+        .map(({ partSku, quantityRequired }) => {
+          const allocated = allocation!.allocatedParts[partSku] ?? 0;
+          return quantityRequired > 0 ? Math.floor(allocated / quantityRequired) : 0;
+        })
+        .filter(v => v > 0))
+    : 0;
+  
+  // Products with no target (demand = 0) are theoretical unless they were actually allocated
+  const isTheoreticalOnly = !hasTarget && !hasAllocation;
 
   const getStatusColor = () => {
+    // Theoretical only products (no actual allocation)
+    if (isTheoreticalOnly) {
+      return 'border-gray-300 bg-gray-50';
+    }
+    
+    // If product has a target, base color on target fulfillment
+    if (hasTarget) {
+      if (maxBuildable >= totalNeeded) return 'border-green-500 bg-green-50'; // Meets target
+      if (maxBuildable >= 1) return 'border-yellow-500 bg-yellow-50'; // Can build some but not target
+      return 'border-red-500 bg-red-50'; // Cannot build
+    }
+    
+    // Fallback to raw buildable quantity (original logic)
     if (maxBuildable >= 5) return 'border-green-500 bg-green-50';
     if (maxBuildable >= 1) return 'border-yellow-500 bg-yellow-50';
     return 'border-red-500 bg-red-50';
   };
 
+  const getStatusBadgeColor = () => {
+    if (isTheoreticalOnly) return 'bg-gray-100 text-gray-700';
+    if (hasTarget) {
+      if (allocatedQuantity >= totalNeeded) return 'bg-green-100 text-green-800';
+      if (allocatedQuantity > 0) return 'bg-yellow-100 text-yellow-800';
+      return 'bg-red-100 text-red-800';
+    }
+    if (allocatedQuantity > 0) return 'bg-blue-100 text-blue-800';
+    if (maxBuildable >= 5) return 'bg-green-100 text-green-800';
+    if (maxBuildable >= 1) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+
   const getStatusBadge = () => {
-    if (maxBuildable >= 5) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-          {maxBuildable} יחידות
-        </span>
-      );
-    }
-    if (maxBuildable >= 1) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-          {maxBuildable} יחידות
-        </span>
-      );
-    }
+    const surplus = maxBuildable > totalNeeded ? maxBuildable - totalNeeded : 0;
+    
+    // Option 1 display: Clear metrics (Allocated | Target | Possible | Surplus)
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-        לא ניתן לייצר
-      </span>
+      <div className={`px-3 py-2 rounded-lg text-center ${getStatusBadgeColor()}`}>
+        <div className="text-2xl font-bold">{allocatedQuantity}</div>
+        <div className="text-xs mt-1 grid grid-cols-3 gap-1">
+          {hasTarget && (
+            <>
+              <div className="text-xs"><span className="opacity-70">יעד</span> {totalNeeded}</div>
+              <div className="text-xs"><span className="opacity-70">אפשרי</span> {maxBuildable}</div>
+              <div className="text-xs"><span className="opacity-70">עודף</span> {surplus}</div>
+            </>
+          )}
+          {!hasTarget && (
+            <>
+              <div className="text-xs"><span className="opacity-70">אפשרי</span> {maxBuildable}</div>
+            </>
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -101,7 +147,7 @@ export function ProductCard({ product, allocation, target, isSelected, onClick }
               <span className={`text-xs font-medium ${
                 maxBuildable >= totalNeeded ? 'text-green-600' : 'text-orange-600'
               }`}>
-                {maxBuildable}/{totalNeeded}
+                {maxBuildable} ניתן לייצר ⟵ {totalNeeded} יעד
               </span>
             )}
           </div>
@@ -113,9 +159,14 @@ export function ProductCard({ product, allocation, target, isSelected, onClick }
                   className={`h-full transition-all ${
                     maxBuildable >= totalNeeded ? 'bg-green-500' : maxBuildable > 0 ? 'bg-yellow-500' : 'bg-red-500'
                   }`}
-                  style={{ width: `${Math.min(100, (maxBuildable / totalNeeded) * 100)}%` }}
+                  style={{ width: `${Math.min(150, (maxBuildable / totalNeeded) * 100)}%` }}
                 />
               </div>
+              {maxBuildable > totalNeeded && (
+                <div className="text-xs text-green-600 mt-1 font-medium">
+                  +{maxBuildable - totalNeeded} נוספות אפשריות
+                </div>
+              )}
             </div>
           )}
         </div>

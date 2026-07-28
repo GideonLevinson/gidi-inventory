@@ -24,6 +24,13 @@ import {
   allocateByDemandRatio,
 } from './allocation.js';
 import { parseCsvString, validateCsvColumns } from './csvParser.js';
+import {
+  createReceivingShipment,
+  addReceivingLine,
+  updateReceivingLine,
+  loadReceivingShipments,
+  saveReceivingShipments,
+} from './receiving.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -562,6 +569,148 @@ app.get('/api/transactions', async (req, res) => {
   } catch (error) {
     console.error('Error loading transactions:', error);
     res.status(500).json({ error: 'Failed to load transactions' });
+  }
+});
+
+/**
+ * GET /api/receiving
+ * Get expected shipments awaiting intake
+ */
+app.get('/api/receiving', async (req, res) => {
+  try {
+    const shipments = await loadReceivingShipments();
+    res.json(shipments);
+  } catch (error) {
+    console.error('Error loading receiving shipments:', error);
+    res.status(500).json({ error: 'Failed to load receiving shipments' });
+  }
+});
+
+/**
+ * POST /api/receiving
+ * Create a new expected shipment
+ */
+app.post('/api/receiving', express.json(), async (req, res) => {
+  try {
+    const { supplier, expectedDate, notes } = req.body;
+    if (!supplier || !expectedDate) {
+      return res.status(400).json({ error: 'Missing required fields: supplier, expectedDate' });
+    }
+    const shipment = await createReceivingShipment({ supplier, expectedDate, notes });
+    res.json(shipment);
+  } catch (error) {
+    console.error('Error creating receiving shipment:', error);
+    res.status(500).json({ error: 'Failed to create receiving shipment' });
+  }
+});
+
+/**
+ * POST /api/receiving/:shipmentId/lines
+ * Add a line to an expected shipment
+ */
+app.post('/api/receiving/:shipmentId/lines', express.json(), async (req, res) => {
+  try {
+    const { shipmentId } = req.params;
+    const { itemType, itemId, itemName, orderedQty, notes } = req.body;
+    if (!shipmentId || !itemId || !itemName || !itemType) {
+      return res.status(400).json({ error: 'Missing required fields for receiving line' });
+    }
+
+    const line = {
+      id: `LINE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      itemType,
+      itemId,
+      itemName,
+      orderedQty: Number(orderedQty) || 0,
+      acceptedQty: 0,
+      status: 'pending' as const,
+      notes: notes?.trim() || undefined,
+    };
+
+    const shipment = await addReceivingLine({ shipmentId, line });
+    if (!shipment) {
+      return res.status(404).json({ error: 'Receiving shipment not found' });
+    }
+    res.json(shipment);
+  } catch (error) {
+    console.error('Error adding receiving line:', error);
+    res.status(500).json({ error: 'Failed to add receiving line' });
+  }
+});
+
+/**
+ * PATCH /api/receiving/:shipmentId/lines/:lineId
+ * Update the accepted quantity of a receiving line
+ */
+app.patch('/api/receiving/:shipmentId/lines/:lineId', express.json(), async (req, res) => {
+  try {
+    const { shipmentId, lineId } = req.params;
+    const { orderedQty, acceptedQty, notes, status } = req.body;
+    const shipment = await updateReceivingLine({
+      shipmentId,
+      lineId,
+      orderedQty: typeof orderedQty === 'number' ? orderedQty : undefined,
+      acceptedQty: typeof acceptedQty === 'number' ? acceptedQty : undefined,
+      notes: typeof notes === 'string' ? notes : undefined,
+      status: status || undefined,
+    });
+    if (!shipment) {
+      return res.status(404).json({ error: 'Receiving shipment or line not found' });
+    }
+    res.json(shipment);
+  } catch (error) {
+    console.error('Error updating receiving line:', error);
+    res.status(500).json({ error: 'Failed to update receiving line' });
+  }
+});
+
+/**
+ * POST /api/receiving/:shipmentId/receive
+ * Apply accepted quantities from a shipment into inventory
+ */
+app.post('/api/receiving/:shipmentId/receive', async (req, res) => {
+  try {
+    const { shipmentId } = req.params;
+    const shipments = await loadReceivingShipments();
+    const shipment = shipments.find((item) => item.id === shipmentId);
+
+    if (!shipment) {
+      return res.status(404).json({ error: 'Receiving shipment not found' });
+    }
+
+    const state = await loadInventoryFromFile();
+
+    for (const line of shipment.lines) {
+      if (!line.acceptedQty || line.acceptedQty <= 0) continue;
+
+      if (line.itemType === 'product') {
+        const product = state.products.find((item) => item.id === line.productId || item.name === line.itemName);
+        if (product?.parts?.length) {
+          applyProductPartsDelta(state, product.parts, line.acceptedQty, 1);
+        }
+      } else if (line.itemType === 'part') {
+        const part = state.parts[line.itemId];
+        if (part) {
+          part.currentInventory += line.acceptedQty;
+        }
+      }
+
+      line.status = line.acceptedQty >= line.orderedQty ? 'received' : 'partial';
+    }
+
+    const targets = await loadTargets();
+    state.allocations = await calculateAllocations(state.products, state.parts, targets);
+    await saveInventoryToFile(state);
+
+    shipment.status = shipment.lines.some((line) => line.acceptedQty > 0 && line.acceptedQty < line.orderedQty) ? 'partial' : 'received';
+    shipment.receivedDate = new Date().toISOString();
+    shipment.updatedAt = new Date().toISOString();
+    await saveReceivingShipments(shipments);
+
+    res.json({ shipment, state });
+  } catch (error) {
+    console.error('Error receiving shipment:', error);
+    res.status(500).json({ error: 'Failed to receive shipment' });
   }
 });
 

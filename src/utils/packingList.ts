@@ -65,7 +65,11 @@ export function formatPackingListForWhatsApp(
   const lines: string[] = [];
   
   // Header with date in bold
-  const dateStr = new Date(transaction.date).toLocaleDateString('he-IL');
+  const dateStr = new Date(transaction.date).toLocaleDateString('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
   lines.push(`*${dateStr}*`);
   
   // Location and customer

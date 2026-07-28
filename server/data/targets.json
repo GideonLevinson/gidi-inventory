@@ -17,7 +17,7 @@
   "4580/4-ATI זוג שערי 7/2 ניידים": {
     "productName": "4580/4-ATI זוג שערי 7/2 ניידים",
     "minStock": 4,
-    "expectedInstalls": 1
+    "expectedInstalls": 0
   },
   "זוג שערי 5/2 קבוע 4582-TI": {
     "productName": "זוג שערי 5/2 קבוע 4582-TI",
@@ -36,7 +36,7 @@
   },
   "4580 3x2premium  זוג שערי 3/2 קבועים": {
     "productName": "4580 3x2premium  זוג שערי 3/2 קבועים",
-    "minStock": 3,
+    "minStock": 2,
     "expectedInstalls": 0
   },
   "45803x2/4-ATI  זוג שערי 3/2 ניידים": {
@@ -62,7 +62,7 @@
   "שער מטרה DB120X90": {
     "productName": "שער מטרה DB120X90",
     "minStock": 20,
-    "expectedInstalls": 0
+    "expectedInstalls": 8
   },
   "שער מטרה DB180X120": {
     "productName": "שער מטרה DB180X120",
@@ -121,17 +121,22 @@
   },
   "4580 4x2premium  זוג שערי 4/2 קבועים": {
     "productName": "4580 4x2premium  זוג שערי 4/2 קבועים",
-    "minStock": 0,
+    "minStock": 1,
     "expectedInstalls": 0
   },
   "45804x2/4-ATI  זוג שערי 4/2 ניידים": {
     "productName": "45804x2/4-ATI  זוג שערי 4/2 ניידים",
-    "minStock": 0,
+    "minStock": 1,
     "expectedInstalls": 0
   },
   "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL": {
     "productName": "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL",
-    "minStock": 2,
+    "minStock": 3,
+    "expectedInstalls": 0
+  },
+  "סט גלגלים קדמיים לשער נייד": {
+    "productName": "סט גלגלים קדמיים לשער נייד",
+    "minStock": 5,
     "expectedInstalls": 0
   }
 }

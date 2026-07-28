@@ -85,6 +85,12 @@ npm run build # Production build
 - **Priority-based**: Manual priority ordering for products
 
 ## Color Coding
+**Primary Logic (when targets are set):**
+- Green: Meets or exceeds target quantity
+- Yellow: Can build 1+ units but below target
+- Red: Cannot build any units
+
+**Fallback Logic (no targets set):**
 - Green: Can build 5+ units
 - Yellow: Can build 1-4 units
 - Red: Cannot build (0 units)
