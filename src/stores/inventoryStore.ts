@@ -37,7 +37,8 @@ interface InventoryState {
   loadTransactions: () => Promise<void>;
   loadReceivingShipments: () => Promise<void>;
   createReceivingShipment: (supplier: string, expectedDate: string, notes?: string) => Promise<void>;
-  addReceivingLine: (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; notes?: string }) => Promise<void>;
+  addReceivingLine: (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; acceptedQty: number; status: 'pending' | 'partial' | 'received' | 'cancelled'; notes?: string; productId?: string; itemSku?: string }) => Promise<void>;
+  deleteReceivingLine: (shipmentId: string, lineId: string) => Promise<void>;
   updateReceivingLine: (shipmentId: string, lineId: string, payload: { orderedQty?: number; acceptedQty?: number; notes?: string; status?: 'pending' | 'partial' | 'received' | 'cancelled' }) => Promise<void>;
   receiveShipment: (shipmentId: string) => Promise<void>;
 }
@@ -415,7 +416,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     }
   },
 
-  addReceivingLine: async (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; notes?: string }) => {
+  addReceivingLine: async (shipmentId: string, line: { itemType: 'product' | 'part'; itemId: string; itemName: string; orderedQty: number; acceptedQty: number; status: 'pending' | 'partial' | 'received' | 'cancelled'; notes?: string; productId?: string; itemSku?: string }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/receiving/${shipmentId}/lines`, {
         method: 'POST',
@@ -428,6 +429,20 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       await get().loadReceivingShipments();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to add receiving line' });
+    }
+  },
+
+  deleteReceivingLine: async (shipmentId: string, lineId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/receiving/${shipmentId}/lines/${lineId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete receiving line');
+      }
+      await get().loadReceivingShipments();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to delete receiving line' });
     }
   },
 

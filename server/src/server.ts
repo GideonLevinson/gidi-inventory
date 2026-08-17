@@ -28,6 +28,7 @@ import {
   createReceivingShipment,
   addReceivingLine,
   updateReceivingLine,
+  deleteReceivingLine,
   loadReceivingShipments,
   saveReceivingShipments,
 } from './receiving.js';
@@ -625,6 +626,8 @@ app.post('/api/receiving/:shipmentId/lines', express.json(), async (req, res) =>
       acceptedQty: 0,
       status: 'pending' as const,
       notes: notes?.trim() || undefined,
+      productId: req.body.productId,
+      itemSku: req.body.itemSku,
     };
 
     const shipment = await addReceivingLine({ shipmentId, line });
@@ -665,6 +668,24 @@ app.patch('/api/receiving/:shipmentId/lines/:lineId', express.json(), async (req
 });
 
 /**
+ * DELETE /api/receiving/:shipmentId/lines/:lineId
+ * Remove a line from an expected shipment
+ */
+app.delete('/api/receiving/:shipmentId/lines/:lineId', async (req, res) => {
+  try {
+    const { shipmentId, lineId } = req.params;
+    const shipment = await deleteReceivingLine({ shipmentId, lineId });
+    if (!shipment) {
+      return res.status(404).json({ error: 'Receiving shipment or line not found' });
+    }
+    res.json(shipment);
+  } catch (error) {
+    console.error('Error deleting receiving line:', error);
+    res.status(500).json({ error: 'Failed to delete receiving line' });
+  }
+});
+
+/**
  * POST /api/receiving/:shipmentId/receive
  * Apply accepted quantities from a shipment into inventory
  */
@@ -676,6 +697,10 @@ app.post('/api/receiving/:shipmentId/receive', async (req, res) => {
 
     if (!shipment) {
       return res.status(404).json({ error: 'Receiving shipment not found' });
+    }
+
+    if (shipment.status === 'received' && shipment.receivedDate) {
+      return res.json({ shipment, state: await loadInventoryFromFile(), skipped: true });
     }
 
     const state = await loadInventoryFromFile();

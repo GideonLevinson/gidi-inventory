@@ -98,7 +98,51 @@ export async function addReceivingLine(input: {
   const shipments = await loadReceivingShipments();
   const shipment = shipments.find((item) => item.id === input.shipmentId);
   if (!shipment) return null;
-  shipment.lines.push(input.line);
+
+  if (shipment.status === 'received') {
+    return shipment;
+  }
+
+  const normalizedLine = {
+    ...input.line,
+    itemId: input.line.itemId?.trim?.() || input.line.itemId,
+    itemName: input.line.itemName?.trim?.() || input.line.itemName,
+    notes: input.line.notes?.trim?.() || input.line.notes,
+  };
+
+  const existingLine = shipment.lines.find((item) => {
+    const sameType = item.itemType === normalizedLine.itemType;
+    const sameItemId = item.itemId === normalizedLine.itemId;
+    const sameProductId = !!item.productId && !!normalizedLine.productId && item.productId === normalizedLine.productId;
+    const sameItemSku = !!item.itemSku && !!normalizedLine.itemSku && item.itemSku === normalizedLine.itemSku;
+    return sameType && (sameItemId || sameProductId || sameItemSku);
+  });
+
+  if (existingLine) {
+    existingLine.orderedQty = normalizedLine.orderedQty;
+    existingLine.notes = normalizedLine.notes || existingLine.notes;
+    existingLine.status = existingLine.acceptedQty > 0 ? (existingLine.acceptedQty >= existingLine.orderedQty ? 'received' : 'partial') : 'pending';
+    shipment.updatedAt = new Date().toISOString();
+    await saveReceivingShipments(shipments);
+    return shipment;
+  }
+
+  shipment.lines.push(normalizedLine);
+  shipment.updatedAt = new Date().toISOString();
+  await saveReceivingShipments(shipments);
+  return shipment;
+}
+
+export async function deleteReceivingLine(input: {
+  shipmentId: string;
+  lineId: string;
+}): Promise<ReceivingShipment | null> {
+  const shipments = await loadReceivingShipments();
+  const shipment = shipments.find((item) => item.id === input.shipmentId);
+  if (!shipment) return null;
+  const index = shipment.lines.findIndex((item) => item.id === input.lineId);
+  if (index === -1) return null;
+  shipment.lines.splice(index, 1);
   shipment.updatedAt = new Date().toISOString();
   await saveReceivingShipments(shipments);
   return shipment;

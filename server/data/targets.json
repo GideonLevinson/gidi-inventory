@@ -138,5 +138,15 @@
     "productName": "סט גלגלים קדמיים לשער נייד",
     "minStock": 5,
     "expectedInstalls": 0
+  },
+  "4595/8LX-120": {
+    "productName": "4595/8LX-120",
+    "minStock": 2,
+    "expectedInstalls": 0
+  },
+  "4595/2LX-120": {
+    "productName": "4595/2LX-120",
+    "minStock": 1,
+    "expectedInstalls": 0
   }
 }

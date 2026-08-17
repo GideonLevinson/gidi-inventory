@@ -19,29 +19,33 @@ function formatDate(value?: string) {
 }
 
 export function ReceivingView({ shipments: initialShipments }: ReceivingViewProps) {
-  const { products, parts, loadInventory, receivingShipments, loadReceivingShipments, updateReceivingLine, receiveShipment, createReceivingShipment, addReceivingLine } = useInventoryStore();
-  const [shipments, setShipments] = useState<ReceivingShipment[]>(initialShipments || []);
+  const {
+    products,
+    parts,
+    loadInventory,
+    receivingShipments,
+    loadReceivingShipments,
+    updateReceivingLine,
+    receiveShipment,
+    createReceivingShipment,
+    addReceivingLine,
+    deleteReceivingLine,
+  } = useInventoryStore();
   const [supplier, setSupplier] = useState('');
   const [expectedDate, setExpectedDate] = useState('');
   const [selectedItemType, setSelectedItemType] = useState<'product' | 'part'>('product');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [orderedQty, setOrderedQty] = useState('1');
   const [notes, setNotes] = useState('');
-  const [activeShipmentId, setActiveShipmentId] = useState<string | null>(null);
 
   useEffect(() => {
     loadInventory();
-  }, [loadInventory]);
+    loadReceivingShipments();
+  }, [loadInventory, loadReceivingShipments]);
 
-  useEffect(() => {
-    if (initialShipments) {
-      setShipments(initialShipments);
-    }
-  }, [initialShipments]);
-
-  useEffect(() => {
-    setShipments(receivingShipments);
-  }, [receivingShipments]);
+  const shipments = initialShipments || receivingShipments;
+  const openShipments = shipments.filter((shipment) => shipment.status !== 'received');
+  const archivedShipments = shipments.filter((shipment) => shipment.status === 'received');
 
   const availableProducts = useMemo(() => products.filter((product) => product.name), [products]);
   const availableParts = useMemo(() => Object.values(parts), [parts]);
@@ -56,8 +60,8 @@ export function ReceivingView({ shipments: initialShipments }: ReceivingViewProp
     await loadReceivingShipments();
   };
 
-  const addLineToShipment = async () => {
-    if (!activeShipmentId || !selectedItemId) return;
+  const addLineToShipment = async (shipmentId: string) => {
+    if (!shipmentId || !selectedItemId) return;
 
     const selectedProduct = availableProducts.find((product) => product.id === selectedItemId);
     const selectedPart = availableParts.find((part) => part.sku === selectedItemId);
@@ -67,10 +71,14 @@ export function ReceivingView({ shipments: initialShipments }: ReceivingViewProp
       itemId: selectedItemId,
       itemName: selectedProduct?.name || selectedPart?.description || selectedItemId,
       orderedQty: Number(orderedQty) || 0,
+      acceptedQty: 0,
+      status: 'pending' as const,
       notes: notes.trim() || undefined,
+      productId: selectedProduct?.id,
+      itemSku: selectedPart?.sku,
     };
 
-    await addReceivingLine(activeShipmentId, linePayload);
+    await addReceivingLine(shipmentId, linePayload);
     setOrderedQty('1');
     setNotes('');
     setSelectedItemId('');
@@ -82,6 +90,10 @@ export function ReceivingView({ shipments: initialShipments }: ReceivingViewProp
     if (field === 'acceptedQty') payload.acceptedQty = Number(value) || 0;
     if (field === 'notes') payload.notes = String(value);
     await updateReceivingLine(shipmentId, lineId, payload);
+  };
+
+  const handleDeleteLine = async (shipmentId: string, lineId: string) => {
+    await deleteReceivingLine(shipmentId, lineId);
   };
 
   const finalizeReceiving = async (shipmentId: string) => {
@@ -126,155 +138,202 @@ export function ReceivingView({ shipments: initialShipments }: ReceivingViewProp
         </CardContent>
       </Card>
 
-      {shipments.length === 0 ? (
+      {openShipments.length === 0 && archivedShipments.length === 0 ? (
         <Card>
           <CardContent>
             <p className="text-gray-500">אין עדיין משלוחים צפויים.</p>
           </CardContent>
         </Card>
       ) : (
-        shipments.map((shipment) => (
-          <Card key={shipment.id}>
-            <CardHeader className="bg-gray-50">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{shipment.supplier}</h3>
-                  <p className="text-sm text-gray-500">צפוי: {formatDate(shipment.expectedDate)}</p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
-                  {shipment.status}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">סוג פריט</label>
-                  <select
-                    value={selectedItemType}
-                    onChange={(e) => {
-                      setSelectedItemType(e.target.value as 'product' | 'part');
-                      setSelectedItemId('');
-                    }}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  >
-                    <option value="product">מוצר</option>
-                    <option value="part">חלק</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">בחר {selectedItemType === 'product' ? 'מוצר' : 'חלק'}</label>
-                  <select
-                    value={selectedItemId}
-                    onChange={(e) => setSelectedItemId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  >
-                    <option value="">בחר</option>
-                    {(selectedItemType === 'product' ? availableProducts : availableParts).map((item) => {
-                      if (selectedItemType === 'product') {
-                        const product = item as typeof availableProducts[number];
-                        return (
-                          <option key={product.id} value={product.id}>
-                            {product.name}
-                          </option>
-                        );
-                      }
+        <>
+          {openShipments.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">משלוחים פתוחים</h3>
+              {openShipments.map((shipment) => (
+                <Card key={shipment.id}>
+                  <CardHeader className="bg-gray-50">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{shipment.supplier}</h3>
+                        <p className="text-sm text-gray-500">צפוי: {formatDate(shipment.expectedDate)}</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+                        {shipment.status}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">סוג פריט</label>
+                        <select
+                          value={selectedItemType}
+                          onChange={(e) => {
+                            setSelectedItemType(e.target.value as 'product' | 'part');
+                            setSelectedItemId('');
+                          }}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        >
+                          <option value="product">מוצר</option>
+                          <option value="part">חלק</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">בחר {selectedItemType === 'product' ? 'מוצר' : 'חלק'}</label>
+                        <select
+                          value={selectedItemId}
+                          onChange={(e) => setSelectedItemId(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        >
+                          <option value="">בחר</option>
+                          {(selectedItemType === 'product' ? availableProducts : availableParts).map((item) => {
+                            if (selectedItemType === 'product') {
+                              const product = item as typeof availableProducts[number];
+                              return (
+                                <option key={product.id} value={product.id}>
+                                  {product.name}
+                                </option>
+                              );
+                            }
 
-                      const part = item as typeof availableParts[number];
-                      return (
-                        <option key={part.sku} value={part.sku}>
-                          {part.description || part.sku}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">כמות בהזמנה</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={orderedQty}
-                    onChange={(e) => setOrderedQty(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={() => {
-                      setActiveShipmentId(shipment.id);
-                      addLineToShipment();
-                    }}
-                    className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                  >
-                    הוסף פריט
-                  </button>
-                </div>
-              </div>
+                            const part = item as typeof availableParts[number];
+                            return (
+                              <option key={part.sku} value={part.sku}>
+                                {part.description || part.sku}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">כמות בהזמנה</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={orderedQty}
+                          onChange={(e) => setOrderedQty(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          onClick={() => addLineToShipment(shipment.id)}
+                          className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                        >
+                          הוסף פריט
+                        </button>
+                      </div>
+                    </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-right text-gray-600">
-                      <th className="py-2 px-2">שם</th>
-                      <th className="py-2 px-2">כמות צפויה</th>
-                      <th className="py-2 px-2">כמות לקליטה</th>
-                      <th className="py-2 px-2">הערות</th>
-                      <th className="py-2 px-2">סטטוס</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shipment.lines.map((line) => (
-                      <tr key={line.id} className="border-b border-gray-100">
-                        <td className="py-2 px-2">{line.itemName}</td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={line.orderedQty}
-                            onChange={(e) => updateLine(shipment.id, line.id, 'orderedQty', e.target.value)}
-                            className="w-20 border border-gray-300 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={line.acceptedQty}
-                            onChange={(e) => updateLine(shipment.id, line.id, 'acceptedQty', e.target.value)}
-                            className="w-20 border border-gray-300 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            value={line.notes || ''}
-                            onChange={(e) => updateLine(shipment.id, line.id, 'notes', e.target.value)}
-                            className="w-full border border-gray-300 rounded px-2 py-1"
-                            placeholder="הערות"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
-                            {line.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-right text-gray-600">
+                            <th className="py-2 px-2">שם</th>
+                            <th className="py-2 px-2">כמות צפויה</th>
+                            <th className="py-2 px-2">כמות לקליטה</th>
+                            <th className="py-2 px-2">הערות</th>
+                            <th className="py-2 px-2">סטטוס</th>
+                            <th className="py-2 px-2">פעולה</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {shipment.lines.map((line) => (
+                            <tr key={line.id} className="border-b border-gray-100">
+                              <td className="py-2 px-2">{line.itemName}</td>
+                              <td className="py-2 px-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={line.orderedQty}
+                                  onChange={(e) => updateLine(shipment.id, line.id, 'orderedQty', e.target.value)}
+                                  className="w-24 border border-gray-300 rounded px-2 py-1"
+                                />
+                              </td>
+                              <td className="py-2 px-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={line.acceptedQty}
+                                  onChange={(e) => updateLine(shipment.id, line.id, 'acceptedQty', e.target.value)}
+                                  className="w-24 border border-gray-300 rounded px-2 py-1"
+                                />
+                              </td>
+                              <td className="py-2 px-2">
+                                <input
+                                  value={line.notes || ''}
+                                  onChange={(e) => updateLine(shipment.id, line.id, 'notes', e.target.value)}
+                                  className="w-full border border-gray-300 rounded px-2 py-1"
+                                  placeholder="הערות"
+                                />
+                              </td>
+                              <td className="py-2 px-2">
+                                <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
+                                  {line.status}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2 text-left">
+                                <button
+                                  onClick={() => handleDeleteLine(shipment.id, line.id)}
+                                  className="text-red-600 hover:text-red-800 text-sm"
+                                >
+                                  מחק
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-              <div className="flex justify-end">
-                <button
-                  onClick={() => finalizeReceiving(shipment.id)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  אשר קליטה של המשלוח למלאי
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => finalizeReceiving(shipment.id)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                      >
+                        אשר קליטה של המשלוח למלאי
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {archivedShipments.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">היסטוריית משלוחים</h3>
+              {archivedShipments.map((shipment) => (
+                <Card key={shipment.id}>
+                  <CardHeader className="bg-gray-50">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{shipment.supplier}</h3>
+                        <p className="text-sm text-gray-500">צפוי: {formatDate(shipment.expectedDate)} • התקבל: {formatDate(shipment.receivedDate)}</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+                        {shipment.status}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {shipment.lines.map((line) => (
+                        <div key={line.id} className="flex items-center justify-between border-b pb-2 last:border-b-0 last:pb-0">
+                          <div>
+                            <p className="font-medium">{line.itemName}</p>
+                            <p className="text-xs text-gray-500">הזמנה: {line.orderedQty} • התקבל: {line.acceptedQty}</p>
+                          </div>
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">{line.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
