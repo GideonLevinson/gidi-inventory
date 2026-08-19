@@ -3418,5 +3418,53 @@
     ],
     "materials": "",
     "notes": "הותקנו 2 סככות 8 מקומות, מושבים אפורים"
+  },
+  {
+    "id": "TXN-1787043535193-alcuzyo26",
+    "date": "2026-08-18",
+    "type": "sale",
+    "status": "completed",
+    "customer": "כפר מכבי (דשא עוז)",
+    "location": "כפר מכבי",
+    "products": [
+      {
+        "productId": "4642-b-ril-זוג-שערי-פוטסל-קבועים-עם-ril",
+        "productName": "4642/B+RIL  זוג שערי פוטסל קבועים עם RIL",
+        "quantity": 1,
+        "parts": [
+          {
+            "partSku": "DBSP4642T3",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBSP4642PSD",
+            "quantityRequired": 2
+          },
+          {
+            "partSku": "DB4642REGALT",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "4642SETUP",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST3M-INT/4642",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DBDIST100/FA",
+            "quantityRequired": 1
+          },
+          {
+            "partSku": "DB4642RIL-BULL",
+            "quantityRequired": 1
+          }
+        ]
+      }
+    ],
+    "parts": [],
+    "materials": "",
+    "notes": "כולל פירוק של זוג סלים וזוג שערים"
   }
 ]

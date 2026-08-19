@@ -1,1 +1,143 @@
-[]
+[
+  {
+    "id": "RCV-1786985612680-xg267b",
+    "supplier": "GammaSport",
+    "expectedDate": "2026-08-13",
+    "status": "received",
+    "lines": [
+      {
+        "id": "LINE-1786986322022-ad3erk",
+        "itemType": "product",
+        "itemId": "זוג-שערי-5-2-קבוע-4582-ti",
+        "itemName": "זוג שערי 5/2 קבוע 4582-TI",
+        "orderedQty": 16,
+        "acceptedQty": 16,
+        "status": "received",
+        "productId": "זוג-שערי-5-2-קבוע-4582-ti"
+      },
+      {
+        "id": "LINE-1786986328847-t4mmhr",
+        "itemType": "product",
+        "itemId": "4580-2-ti-זוג-שערי-7-2-קבועים",
+        "itemName": "4580/2-TI זוג שערי 7/2 קבועים",
+        "orderedQty": 1,
+        "acceptedQty": 1,
+        "status": "received",
+        "productId": "4580-2-ti-זוג-שערי-7-2-קבועים"
+      },
+      {
+        "id": "LINE-1786986341827-xudjml",
+        "itemType": "product",
+        "itemId": "4580-4-ati-זוג-שערי-7-2-ניידים",
+        "itemName": "4580/4-ATI זוג שערי 7/2 ניידים",
+        "orderedQty": 2,
+        "acceptedQty": 2,
+        "status": "received",
+        "productId": "4580-4-ati-זוג-שערי-7-2-ניידים"
+      },
+      {
+        "id": "LINE-1786986361977-1rb8zh",
+        "itemType": "product",
+        "itemId": "4582-4-ati-זוג-שערי-5-2-ניידים",
+        "itemName": "4582/4-ATI זוג שערי 5/2 ניידים",
+        "orderedQty": 6,
+        "acceptedQty": 6,
+        "status": "received",
+        "productId": "4582-4-ati-זוג-שערי-5-2-ניידים"
+      },
+      {
+        "id": "LINE-1786986399763-3hdy27",
+        "itemType": "product",
+        "itemId": "4580-4x2premium-זוג-שערי-4-2-קבועים",
+        "itemName": "4580 4x2premium  זוג שערי 4/2 קבועים",
+        "orderedQty": 1,
+        "acceptedQty": 1,
+        "status": "received",
+        "productId": "4580-4x2premium-זוג-שערי-4-2-קבועים"
+      },
+      {
+        "id": "LINE-1786986541246-zagqnt",
+        "itemType": "part",
+        "itemId": "DBSP400T",
+        "itemName": "זוג קורות 4 מ׳",
+        "orderedQty": 2,
+        "acceptedQty": 2,
+        "status": "received",
+        "itemSku": "DBSP400T"
+      },
+      {
+        "id": "LINE-1786986553648-9cyta2",
+        "itemType": "product",
+        "itemId": "4580-3x2premium-זוג-שערי-3-2-קבועים",
+        "itemName": "4580 3x2premium  זוג שערי 3/2 קבועים",
+        "orderedQty": 2,
+        "acceptedQty": 2,
+        "status": "received",
+        "productId": "4580-3x2premium-זוג-שערי-3-2-קבועים"
+      },
+      {
+        "id": "LINE-1786986564442-n6qb67",
+        "itemType": "product",
+        "itemId": "45803x2-4-ati-זוג-שערי-3-2-ניידים",
+        "itemName": "45803x2/4-ATI  זוג שערי 3/2 ניידים",
+        "orderedQty": 7,
+        "acceptedQty": 7,
+        "status": "received",
+        "productId": "45803x2-4-ati-זוג-שערי-3-2-ניידים"
+      },
+      {
+        "id": "LINE-1786986586582-6rdubv",
+        "itemType": "product",
+        "itemId": "7801-b-זוג-שערי-3-2-קבועים-פרופיל-מרובע-עם-ril",
+        "itemName": "7801/B זוג שערי 3/2 קבועים, פרופיל מרובע עם RIL",
+        "orderedQty": 3,
+        "acceptedQty": 3,
+        "status": "received",
+        "productId": "7801-b-זוג-שערי-3-2-קבועים-פרופיל-מרובע-עם-ril"
+      },
+      {
+        "id": "LINE-1786986601577-zikp7l",
+        "itemType": "product",
+        "itemId": "4593-9-סככת-שחקנים-9-מ-17-מקומות",
+        "itemName": "4593/9 סככת שחקנים 9 מ׳ 17 מקומות",
+        "orderedQty": 4,
+        "acceptedQty": 4,
+        "status": "received",
+        "productId": "4593-9-סככת-שחקנים-9-מ-17-מקומות"
+      },
+      {
+        "id": "LINE-1786986613209-4wmgrg",
+        "itemType": "product",
+        "itemId": "4593-2-סככת-שיפוט-2-מ-4-מקומות",
+        "itemName": "4593/2 סככת שיפוט 2 מ׳ 4 מקומות",
+        "orderedQty": 2,
+        "acceptedQty": 2,
+        "status": "received",
+        "productId": "4593-2-סככת-שיפוט-2-מ-4-מקומות"
+      },
+      {
+        "id": "LINE-1786986634298-fkz6qg",
+        "itemType": "product",
+        "itemId": "4595-8lx-120",
+        "itemName": "4595/8LX-120",
+        "orderedQty": 2,
+        "acceptedQty": 2,
+        "status": "received",
+        "productId": "4595-8lx-120"
+      },
+      {
+        "id": "LINE-1786986642165-xmd4ya",
+        "itemType": "product",
+        "itemId": "4595-2lx-120",
+        "itemName": "4595/2LX-120",
+        "orderedQty": 1,
+        "acceptedQty": 1,
+        "status": "received",
+        "productId": "4595-2lx-120"
+      }
+    ],
+    "createdAt": "2026-08-17T16:53:32.680Z",
+    "updatedAt": "2026-08-17T17:12:59.119Z",
+    "receivedDate": "2026-08-17T17:12:59.119Z"
+  }
+]
